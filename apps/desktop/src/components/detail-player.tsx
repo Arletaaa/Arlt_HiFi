@@ -9,6 +9,7 @@ import {
   type Track
 } from "@arlhifi/shared";
 import { usePlayerStore } from "../store/player-store";
+import type { TurntableTransport } from "../scene/turntable-interaction";
 
 const MODES: readonly { label: string; value: PlaybackMode }[] = [
   { label: "顺序", value: "sequential" },
@@ -45,13 +46,14 @@ const clamp = (value: number, min: number, max: number): number => Math.min(max,
 export interface DetailPlayerProps {
   readonly onPlayPause: () => void;
   readonly tracks: readonly Track[];
+  readonly transport: TurntableTransport;
 }
 
 /**
  * 详情页左下角的 now playing 条：
- * 只在唱片机真正开始播放后出现，替换原本的专辑 caption。
+ * CD 放上转盘后出现，替换原本的专辑 caption；是否出声由唱臂决定。
  */
-export const DetailPlayer = ({ onPlayPause, tracks }: DetailPlayerProps) => {
+export const DetailPlayer = ({ onPlayPause, tracks, transport }: DetailPlayerProps) => {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const status = usePlayerStore((state) => state.status);
   const positionSeconds = usePlayerStore((state) => state.positionSeconds);
@@ -64,24 +66,31 @@ export const DetailPlayer = ({ onPlayPause, tracks }: DetailPlayerProps) => {
   const progressRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
 
-  const index = currentTrack ? tracks.findIndex((track) => track.id === currentTrack.id) : -1;
+  const displayTrack =
+    currentTrack && tracks.some((track) => track.id === currentTrack.id) ? currentTrack : tracks[0] ?? null;
 
-  if (!currentTrack || index < 0) {
+  if (!displayTrack) {
     return null;
   }
 
-  const duration = durationSeconds > 0 ? durationSeconds : currentTrack.durationSeconds;
-  const position = clamp(positionSeconds, 0, duration);
+  const index = tracks.findIndex((track) => track.id === displayTrack.id);
+  const isCurrentTrack = currentTrack?.id === displayTrack.id;
+  const duration = isCurrentTrack && durationSeconds > 0 ? durationSeconds : displayTrack.durationSeconds;
+  const position = isCurrentTrack ? clamp(positionSeconds, 0, duration) : 0;
   const progress = duration > 0 ? position / duration : 0;
   const percent = `${Math.min(100, Math.max(0, progress * 100))}%`;
   const isPlaying = status === "playing";
-  const stateLabel = isPlaying
-    ? "NOW PLAYING"
-    : duration > 0 && position >= duration - 1
-      ? "ENDED"
-      : "PAUSED";
+  const stateLabel = transport.spinning
+    ? transport.armDown
+      ? isPlaying
+        ? "NOW PLAYING"
+        : "PAUSED"
+      : "SPINNING"
+    : transport.armDown
+      ? "PAUSED"
+      : "READY";
   const nextDisabled = playbackMode === "sequential" && tracks.length > 1 && index >= tracks.length - 1;
-  const quality = getQualityLabel(currentTrack.quality);
+  const quality = getQualityLabel(displayTrack.quality);
 
   const seekFromPointer = (clientX: number): void => {
     const element = progressRef.current;
@@ -153,7 +162,7 @@ export const DetailPlayer = ({ onPlayPause, tracks }: DetailPlayerProps) => {
       aria-label="正在播放"
       className="detail-player"
       data-dragging={dragging ? "true" : "false"}
-      data-state={isPlaying ? "playing" : "paused"}
+      data-state={isPlaying && transport.spinning && transport.armDown ? "playing" : "paused"}
     >
       <div className="detail-player__top">
         <p className="detail-player__state">
@@ -161,18 +170,18 @@ export const DetailPlayer = ({ onPlayPause, tracks }: DetailPlayerProps) => {
           {stateLabel}
         </p>
         <p aria-label="音频参数" className="detail-player__params">
-          <span>{getAudioFormatLabel(currentTrack.filePath)}</span>
-          <span>{formatSampleRate(currentTrack.sampleRateHz)}</span>
-          <span>{formatBitDepth(currentTrack.bitDepth)}</span>
+          <span>{getAudioFormatLabel(displayTrack.filePath)}</span>
+          <span>{formatSampleRate(displayTrack.sampleRateHz)}</span>
+          <span>{formatBitDepth(displayTrack.bitDepth)}</span>
           <span className="detail-player__quality">{quality}</span>
         </p>
       </div>
 
-      <p aria-live="polite" className="detail-player__title" title={currentTrack.title}>
-        {currentTrack.title}
+      <p aria-live="polite" className="detail-player__title" title={displayTrack.title}>
+        {displayTrack.title}
       </p>
       <p className="detail-player__meta">
-        {currentTrack.artist} · {currentTrack.album}
+        {displayTrack.artist} · {displayTrack.album}
       </p>
 
       <div className="detail-player__timeline">
@@ -213,13 +222,13 @@ export const DetailPlayer = ({ onPlayPause, tracks }: DetailPlayerProps) => {
             <PreviousIcon />
           </button>
           <button
-            aria-label={isPlaying ? "暂停" : "播放"}
+            aria-label={transport.spinning ? "暂停" : "播放"}
             className="detail-player__button detail-player__button--play"
             onClick={onPlayPause}
-            title={isPlaying ? "暂停" : "播放"}
+            title={transport.spinning ? "暂停" : "播放"}
             type="button"
           >
-            {isPlaying ? <PauseIcon /> : <PlayIcon />}
+            {transport.spinning ? <PauseIcon /> : <PlayIcon />}
           </button>
           <button
             aria-disabled={nextDisabled}

@@ -31,11 +31,11 @@ import {
   shouldDropArm,
   spinRateAfter
 } from "./turntable-interaction";
-import type { TurntableBridge } from "./turntable-interaction";
+import type { TurntableBridge, TurntableTransport } from "./turntable-interaction";
 
 export interface TurntableProps {
   readonly bridge: TurntableBridge;
-  readonly onArmDownChange: (armDown: boolean) => void;
+  readonly onTransportChange: (transport: TurntableTransport) => void;
   readonly phase: CasePhase;
   readonly tracks: readonly Track[];
 }
@@ -56,7 +56,7 @@ const findNode = (root: Object3D, name: string): Object3D => {
  * - 拖唱臂到 CD 上开始播放，拖走暂停；
  * - CD 是否在盘上由 CaseDetail 通过 bridge 同步。
  */
-export const Turntable = ({ bridge, onArmDownChange, phase, tracks }: TurntableProps) => {
+export const Turntable = ({ bridge, onTransportChange, phase, tracks }: TurntableProps) => {
   const gltf = useLoader(GLTFLoader, TURNTABLE_MODEL_URL);
   const { gl } = useThree();
   const groupRef = useRef<Group>(null);
@@ -116,6 +116,7 @@ export const Turntable = ({ bridge, onArmDownChange, phase, tracks }: TurntableP
   const [armDown, setArmDown] = useState(false);
   const [draggingArm, setDraggingArm] = useState(false);
   const [cdSeated, setCdSeated] = useState(false);
+  const [spinning, setSpinning] = useState(false);
   const status = usePlayerStore((state) => state.status);
 
   const rateRef = useRef(0);
@@ -126,6 +127,7 @@ export const Turntable = ({ bridge, onArmDownChange, phase, tracks }: TurntableP
   const pressRef = useRef(0);
   const dragStart = useRef({ angle: 0, x: 0 });
   const seatedRef = useRef(false);
+  const spinningRef = useRef(false);
   const armBaseY = useRef(0);
   const buttonBaseY = useRef(0);
 
@@ -197,8 +199,21 @@ export const Turntable = ({ bridge, onArmDownChange, phase, tracks }: TurntableP
   }, []);
 
   useEffect(() => {
-    onArmDownChange(armDown);
-  }, [armDown, onArmDownChange]);
+    onTransportChange({ armDown, cdSeated, spinning });
+  }, [armDown, cdSeated, onTransportChange, spinning]);
+
+  /** CD 放上转盘后先 cue 第一首，详情条立即出现，但等唱臂落下才出声。 */
+  useEffect(() => {
+    if (!cdSeated || tracks.length === 0) {
+      return;
+    }
+
+    const state = usePlayerStore.getState();
+
+    if (!state.currentTrack || !tracks.some((track) => track.id === state.currentTrack?.id)) {
+      state.cueTracks(tracks);
+    }
+  }, [cdSeated, tracks]);
 
   /** 唱片机 Start/Stop 与详情条播放键共用这一段逻辑。 */
   const toggleStartStop = useCallback(() => {
@@ -332,7 +347,14 @@ export const Turntable = ({ bridge, onArmDownChange, phase, tracks }: TurntableP
     rateRef.current = spinRateAfter(rateRef.current, motorOn ? 1 : 0, dt);
     spinRef.current = (spinRef.current + rateRef.current * SPIN_RAD_PER_SECOND * dt) % (Math.PI * 2);
     bridge.spinAngle = spinRef.current;
-    bridge.spinning = rateRef.current > 0.02;
+    const nextSpinning = rateRef.current > 0.02;
+    bridge.spinning = nextSpinning;
+
+    if (spinningRef.current !== nextSpinning) {
+      spinningRef.current = nextSpinning;
+      setSpinning(nextSpinning);
+    }
+
     bridge.armDown = armDown;
 
     if (platterRef.current) {

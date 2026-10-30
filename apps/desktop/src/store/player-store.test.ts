@@ -343,6 +343,27 @@ describe("CD queue playback", () => {
     expect(store.getState().status).toBe("playing");
   });
 
+  it("cues a CD without starting audio", () => {
+    const { first, second, store, third } = createQueue();
+
+    store.getState().cueTracks([first, second, third]);
+
+    expect(store.getState().queue).toEqual([first, second, third]);
+    expect(store.getState().currentTrack).toEqual(first);
+    expect(store.getState().status).toBe("paused");
+    expect(store.getState().positionSeconds).toBe(0);
+  });
+
+  it("keeps paused state when skipping while stopped", () => {
+    const { first, second, store, third } = createQueue();
+
+    store.getState().cueTracks([first, second, third]);
+    store.getState().nextTrack();
+
+    expect(store.getState().currentTrack).toEqual(second);
+    expect(store.getState().status).toBe("paused");
+  });
+
   it("navigates previous/next within the current CD", () => {
     const { first, second, store, third } = createQueue();
 

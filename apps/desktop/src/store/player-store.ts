@@ -18,6 +18,7 @@ export interface PlaybackActions {
   readonly handleTrackEnded: () => void;
   readonly markPlaybackPaused: () => void;
   readonly markPlaybackStarted: () => void;
+  readonly cueTracks: (tracks: readonly Track[], startIndex?: number) => void;
   readonly nextTrack: () => void;
   readonly playTrack: (track: Track) => void;
   readonly playTracks: (tracks: readonly Track[], startIndex?: number) => void;
@@ -61,7 +62,8 @@ const seekRequestFor = (state: Pick<PlayerStore, "seekRequest">, seconds: number
 const startTrack = (
   state: Pick<PlayerStore, "playbackEpoch">,
   queue: readonly Track[],
-  track: Track
+  track: Track,
+  status: "playing" | "paused" = "playing"
 ): Partial<PlayerStore> => ({
   queue: [...queue],
   currentTrack: track,
@@ -70,7 +72,7 @@ const startTrack = (
   positionSeconds: 0,
   durationSeconds: track.durationSeconds,
   seekRequest: null,
-  status: "playing"
+  status
 });
 
 /** 曲库切片：扫描结果与收藏。收藏只是 id 集合。 */
@@ -179,6 +181,22 @@ const createPlaybackSlice: StateCreator<PlayerStore, [], [], PlaybackActions> = 
 
     set((state) => startTrack(state, queue, track));
   },
+  cueTracks: (tracks, startIndex = 0) => {
+    const queue = [...tracks];
+
+    if (queue.length === 0) {
+      return;
+    }
+
+    const index = Math.min(Math.max(Math.round(startIndex), 0), queue.length - 1);
+    const track = queue[index];
+
+    if (!track) {
+      return;
+    }
+
+    set((state) => startTrack(state, queue, track, "paused"));
+  },
   nextTrack: () => {
     const state = get();
     const queue = getPlayableQueue(state);
@@ -192,12 +210,13 @@ const createPlaybackSlice: StateCreator<PlayerStore, [], [], PlaybackActions> = 
       : -1;
     const nextIndex = getNextIndex(queue.length, currentIndex, state.playbackMode);
     const next = nextIndex >= 0 ? queue[nextIndex] : null;
+    const nextStatus = state.status === "playing" ? ("playing" as const) : ("paused" as const);
 
     if (!next) {
       const only = queue[0];
 
       if (queue.length === 1 && only) {
-        set(startTrack(state, queue, only));
+        set(startTrack(state, queue, only, nextStatus));
         return;
       }
 
@@ -205,7 +224,7 @@ const createPlaybackSlice: StateCreator<PlayerStore, [], [], PlaybackActions> = 
       return;
     }
 
-    set(startTrack(state, queue, next));
+    set(startTrack(state, queue, next, nextStatus));
   },
   previousTrack: () => {
     const state = get();
@@ -236,7 +255,7 @@ const createPlaybackSlice: StateCreator<PlayerStore, [], [], PlaybackActions> = 
       return;
     }
 
-    set(startTrack(state, queue, previous));
+    set(startTrack(state, queue, previous, state.status === "playing" ? "playing" : "paused"));
   },
   seekTo: (seconds) => {
     const state = get();

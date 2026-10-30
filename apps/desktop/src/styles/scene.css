@@ -462,6 +462,7 @@
   cursor: pointer;
   filter: drop-shadow(0 1px 6px rgba(0, 0, 0, 0.45));
   place-items: center;
+  pointer-events: auto;
 }
 
 .detail-player__button svg {
@@ -506,6 +507,7 @@
   font-size: 10px;
   letter-spacing: 0.08em;
   cursor: pointer;
+  pointer-events: auto;
   text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
 }
 

@@ -11,6 +11,7 @@ import { buildCaseModel, CASE_MODEL_URL } from "./case-model";
 import { CaseDetail } from "./case-detail";
 import { Turntable } from "./turntable";
 import { createTurntableBridge, TURNTABLE_MODEL_URL } from "./turntable-interaction";
+import type { TurntableTransport } from "./turntable-interaction";
 import { ContactShadow } from "./contact-shadows";
 import { useCoverTexture } from "./cover-textures";
 import { countRenderedFrame, sceneStats } from "./perf";
@@ -553,7 +554,11 @@ export const GalleryExperience = ({
   const turntableBridge = useMemo(() => createTurntableBridge(), []);
   const [selectedSlotX, setSelectedSlotX] = useState(0);
   const [startedAt, setStartedAt] = useState(0);
-  const [detailArmDown, setDetailArmDown] = useState(false);
+  const [transport, setTransport] = useState<TurntableTransport>({
+    armDown: false,
+    cdSeated: false,
+    spinning: false
+  });
   const [highlightedGroupId, setHighlightedGroupId] = useState<string | null>(null);
   const scrollRef = useRef(0);
   const volume = usePlayerStore((state) => state.volume);
@@ -576,11 +581,7 @@ export const GalleryExperience = ({
     return group?.id ?? null;
   }, [currentTrackId, groups]);
   const detailPlayerVisible = Boolean(
-    detailGroup &&
-      phase === "detail" &&
-      detailArmDown &&
-      currentTrack &&
-      detailGroup.trackIds.includes(currentTrack.id)
+    detailGroup && phase === "detail" && transport.cdSeated && detailTracks.length > 0
   );
 
   useEffect(() => {
@@ -695,7 +696,7 @@ export const GalleryExperience = ({
             <Suspense fallback={null}>
               <Turntable
                 bridge={turntableBridge}
-                onArmDownChange={setDetailArmDown}
+                onTransportChange={setTransport}
                 phase={phase}
                 tracks={detailTracks}
               />
@@ -733,6 +734,7 @@ export const GalleryExperience = ({
             turntableBridge.toggleStartStop?.();
           }}
           tracks={detailTracks}
+          transport={transport}
         />
       ) : (
         <div className="gallery-caption">

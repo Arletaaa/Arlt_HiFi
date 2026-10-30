@@ -100,6 +100,13 @@ export const cdSeatPose = (
   quaternion: platterQuaternion.clone().multiply(CD_FLAT_QUATERNION)
 });
 
+/** 详情播放条需要知道唱片机是否在转、唱臂是否在盘上、CD 是否就位。 */
+export interface TurntableTransport {
+  armDown: boolean;
+  cdSeated: boolean;
+  spinning: boolean;
+}
+
 /** CaseDetail 与 Turntable 共享的可变状态；只在 detail 场景里使用。 */
 export interface TurntableBridge {
   readonly platterWorld: Vector3;
