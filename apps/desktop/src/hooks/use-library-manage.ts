@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import type { ArltHifiDesktopApi } from "@arlhifi/shared";
+import type { ArltHifiDesktopApi, TrackMetadataEdit } from "@arlhifi/shared";
 import { getDesktopErrorMessage } from "../lib/desktop-error";
 import { usePlayerStore } from "../store/player-store";
 
@@ -51,6 +51,16 @@ export const useLibraryManage = () => {
     [run]
   );
 
+  const editTrack = useCallback(
+    (trackId: string, edit: TrackMetadataEdit): Promise<boolean> =>
+      run(trackId, async (api) => {
+        await api.editTrack(trackId, edit);
+
+        return true;
+      }),
+    [run]
+  );
+
   const setTrackCover = useCallback(
     (trackId: string): Promise<boolean> =>
       run(trackId, async (api) => (await api.setTrackCover(trackId)) !== null),
@@ -62,5 +72,5 @@ export const useLibraryManage = () => {
     [run]
   );
 
-  return { busyTrackId, deleteTrack, error, renameTrack, setTrackCover };
+  return { busyTrackId, deleteTrack, editTrack, error, renameTrack, setTrackCover };
 };

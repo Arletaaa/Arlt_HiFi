@@ -43,6 +43,14 @@ export interface LibraryImportProgress {
   readonly total: number;
 }
 
+/** CD 信息编辑：只改 manifest，不移动文件、不写音频标签。 */
+export interface TrackMetadataEdit {
+  readonly album: string;
+  readonly albumArtist: string;
+  readonly discNumber: number;
+  readonly trackNumber: number;
+}
+
 export interface ArltHifiDesktopApi {
   readonly platform: DesktopPlatform;
   /** 打开系统多选文件对话框，只选不复制。 */
@@ -55,6 +63,8 @@ export interface ArltHifiDesktopApi {
   readonly loadLibrary: () => Promise<readonly Track[]>;
   /** 重命名副本文件与显示标题；id 不变。 */
   readonly renameTrack: (trackId: string, title: string) => Promise<Track>;
+  /** 编辑专辑 / 专辑艺术家 / 碟号 / 音轨号；只改 manifest。 */
+  readonly editTrack: (trackId: string, edit: TrackMetadataEdit) => Promise<Track>;
   /** 选择图片并写为该曲目的封面；取消返回 null。 */
   readonly setTrackCover: (trackId: string) => Promise<Track | null>;
   /** 删除副本文件并从曲库移除。 */

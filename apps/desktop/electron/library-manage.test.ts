@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Track } from "@arlhifi/shared";
-import { removeLibraryTrack, renameLibraryTrack, setLibraryTrackCover } from "./library-manage.js";
+import { editLibraryTrack, removeLibraryTrack, renameLibraryTrack, setLibraryTrackCover } from "./library-manage.js";
 import type { LibraryEntry } from "./library-manifest.js";
 
 const tempDirectories: string[] = [];
@@ -105,6 +105,69 @@ describe("renaming library tracks", () => {
     await expect(
       renameLibraryTrack({ entries: [], title: "Nope", trackId: "file://missing" })
     ).resolves.toBeNull();
+  });
+});
+
+describe("editing CD metadata", () => {
+  it("updates album fields without moving the file", async () => {
+    const directory = await createTempDirectory();
+    const filePath = join(directory, "Track 01.flac");
+    const entries = [createEntry(createTrack(filePath))];
+
+    await writeFile(filePath, "audio");
+
+    const outcome = editLibraryTrack({
+      album: "Compilation",
+      albumArtist: "Various Artists",
+      discNumber: 1,
+      entries,
+      trackId: `file://${filePath}`,
+      trackNumber: 3
+    });
+
+    if (!outcome) {
+      throw new Error("expected an edit result");
+    }
+
+    expect(outcome.track.album).toBe("Compilation");
+    expect(outcome.track.albumArtist).toBe("Various Artists");
+    expect(outcome.track.discNumber).toBe(1);
+    expect(outcome.track.trackNumber).toBe(3);
+    expect(outcome.track.filePath).toBe(filePath);
+    expect(outcome.track.id).toBe(`file://${filePath}`);
+    await expect(stat(filePath)).resolves.toBeTruthy();
+  });
+
+  it("keeps the old album when blank and clamps cue numbers", () => {
+    const filePath = join("D:\\Music", "Track.flac");
+    const entries = [createEntry(createTrack(filePath))];
+
+    const outcome = editLibraryTrack({
+      album: "   ",
+      albumArtist: "  ",
+      discNumber: -2,
+      entries,
+      trackId: `file://${filePath}`,
+      trackNumber: 4.6
+    });
+
+    expect(outcome?.track.album).toBe("Terrace EP");
+    expect(outcome?.track.albumArtist).toBeUndefined();
+    expect(outcome?.track.discNumber).toBe(0);
+    expect(outcome?.track.trackNumber).toBe(5);
+  });
+
+  it("returns null for an unknown track", () => {
+    expect(
+      editLibraryTrack({
+        album: "Album",
+        albumArtist: "",
+        discNumber: 0,
+        entries: [],
+        trackId: "missing",
+        trackNumber: 0
+      })
+    ).toBeNull();
   });
 });
 

@@ -16,7 +16,7 @@ export const ManageOverlay = ({ onClose }: ManageOverlayProps) => {
   const library = usePlayerStore((state) => state.library);
   const loadLibrary = usePlayerStore((state) => state.loadLibrary);
   const librarySort = useSettingsStore((state) => state.librarySort);
-  const { busyTrackId, deleteTrack, error: manageError, renameTrack, setTrackCover } = useLibraryManage();
+  const { busyTrackId, deleteTrack, editTrack, error: manageError, renameTrack, setTrackCover } = useLibraryManage();
   const [actionError, setActionError] = useState<string | null>(null);
   const tracks = useMemo(() => sortTracks(library, librarySort), [library, librarySort]);
 
@@ -96,7 +96,10 @@ export const ManageOverlay = ({ onClose }: ManageOverlayProps) => {
             <p className="preset-group__label">音乐库</p>
             <h2 className="manage-dialog__title">管理曲目</h2>
             <p className="manage-dialog__meta">
-              {library.length} 首 · 重命名 / 封面 / 删除只作用于托管副本
+              {library.length} 首 · 重命名 / CD 信息 / 封面 / 删除只作用于托管副本
+            </p>
+            <p className="manage-dialog__meta">
+              相同「专辑 + 专辑艺术家 + 碟号」会合并为一张 CD；音轨号决定 CD 内顺序。
             </p>
           </header>
 
@@ -120,6 +123,7 @@ export const ManageOverlay = ({ onClose }: ManageOverlayProps) => {
             error={manageError}
             onCover={(trackId) => setTrackCover(trackId)}
             onDelete={(trackId) => deleteTrack(trackId)}
+            onEdit={(trackId, edit) => editTrack(trackId, edit)}
             onRename={(trackId, title) => renameTrack(trackId, title)}
             tracks={tracks}
           />

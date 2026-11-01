@@ -927,6 +927,37 @@
   outline: none;
 }
 
+.library-manage__row.is-editing {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.library-manage__editor {
+  display: grid;
+  flex: 1 0 100%;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 4px 0 2px 8px;
+}
+
+.library-manage__field {
+  display: grid;
+  gap: 3px;
+}
+
+.library-manage__field > span {
+  color: rgba(243, 238, 230, 0.42);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+
+.library-manage__hint {
+  grid-column: 1 / -1;
+  color: rgba(243, 238, 230, 0.36);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
 .preset-pair {
   display: grid;
   grid-template-columns: 1fr 1fr;

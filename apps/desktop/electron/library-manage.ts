@@ -50,6 +50,40 @@ export const renameLibraryTrack = async (options: {
   return { entries: replaceTrack(options.entries, track), track };
 };
 
+const normalizeCue = (value: number): number =>
+  Number.isFinite(value) ? Math.min(999, Math.max(0, Math.round(value))) : 0;
+
+/**
+ * 编辑 CD 信息：专辑 / 专辑艺术家 / 碟号 / 音轨号。
+ * 只改 manifest 里的 Track，不移动文件、不写音频标签；归组与排序会立即按新值生效。
+ */
+export const editLibraryTrack = (options: {
+  readonly album: string;
+  readonly albumArtist: string;
+  readonly discNumber: number;
+  readonly entries: readonly LibraryEntry[];
+  readonly trackId: string;
+  readonly trackNumber: number;
+}): LibraryMutation | null => {
+  const entry = findEntry(options.entries, options.trackId);
+
+  if (!entry) {
+    return null;
+  }
+
+  const album = options.album.trim().slice(0, 120) || entry.track.album;
+  const albumArtist = options.albumArtist.trim().slice(0, 120) || undefined;
+  const track: Track = {
+    ...entry.track,
+    album,
+    albumArtist,
+    discNumber: normalizeCue(options.discNumber),
+    trackNumber: normalizeCue(options.trackNumber)
+  };
+
+  return { entries: replaceTrack(options.entries, track), track };
+};
+
 const isOverrideCover = (coversDirectory: string, coverPath: string | null): coverPath is string =>
   coverPath !== null && coverPath.startsWith(join(coversDirectory, "override-"));
 

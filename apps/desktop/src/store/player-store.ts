@@ -81,20 +81,23 @@ const createLibrarySlice: StateCreator<PlayerStore, [], [], LibraryActions> = (s
     const nextLibrary = [...library];
 
     set((state) => {
-      const prunedQueue = pruneQueueToLibrary(state.queue, nextLibrary);
-      const currentTrackIsInLibrary = state.currentTrack
-        ? nextLibrary.some((track) => track.id === state.currentTrack?.id)
-        : false;
+      const libraryById = new Map(nextLibrary.map((track) => [track.id, track]));
+      const prunedQueue = pruneQueueToLibrary(state.queue, nextLibrary).map(
+        (track) => libraryById.get(track.id) ?? track
+      );
+      const currentTrack = state.currentTrack
+        ? libraryById.get(state.currentTrack.id) ?? null
+        : null;
 
       return {
         library: nextLibrary,
         queue: prunedQueue.length > 0 ? prunedQueue : nextLibrary,
-        currentTrack: currentTrackIsInLibrary ? state.currentTrack : null,
-        positionSeconds: currentTrackIsInLibrary ? state.positionSeconds : 0,
-        durationSeconds: currentTrackIsInLibrary ? state.durationSeconds : 0,
-        seekRequest: currentTrackIsInLibrary ? state.seekRequest : null,
+        currentTrack,
+        positionSeconds: currentTrack ? state.positionSeconds : 0,
+        durationSeconds: currentTrack ? state.durationSeconds : 0,
+        seekRequest: currentTrack ? state.seekRequest : null,
         playbackErrorMessage: null,
-        status: currentTrackIsInLibrary ? state.status : "idle"
+        status: currentTrack ? state.status : "idle"
       };
     });
   },

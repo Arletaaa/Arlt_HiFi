@@ -66,6 +66,7 @@ const createDemoApi = (): ArltHifiDesktopApi => ({
   importAudioFolder: rejectWebPreviewImport,
   loadLibrary: async () => demoTracks,
   renameTrack: rejectWebPreviewManage,
+  editTrack: rejectWebPreviewManage,
   setTrackCover: rejectWebPreviewManage,
   deleteTrack: rejectWebPreviewManage,
   openLibraryFolder: rejectWebPreviewManage,

@@ -6,7 +6,8 @@ import type {
   FolderImportResult,
   LibraryImportProgress,
   LibraryImportResult,
-  Track
+  Track,
+  TrackMetadataEdit
 } from "@arlhifi/shared";
 
 const { contextBridge, ipcRenderer } = electron;
@@ -15,6 +16,7 @@ const importAudioFilesChannel = "library:import-files";
 const importAudioFolderChannel = "library:import-folder";
 const loadLibraryChannel = "library:load";
 const renameTrackChannel = "library:rename-track";
+const editTrackChannel = "library:edit-track";
 const setTrackCoverChannel = "library:set-track-cover";
 const deleteTrackChannel = "library:delete-track";
 const openLibraryFolderChannel = "library:open-folder";
@@ -38,6 +40,9 @@ const desktopApi: ArltHifiDesktopApi = {
   },
   renameTrack: async (trackId: string, title: string): Promise<Track> => {
     return ipcRenderer.invoke(renameTrackChannel, trackId, title) as Promise<Track>;
+  },
+  editTrack: async (trackId: string, edit: TrackMetadataEdit): Promise<Track> => {
+    return ipcRenderer.invoke(editTrackChannel, trackId, edit) as Promise<Track>;
   },
   setTrackCover: async (trackId: string): Promise<Track | null> => {
     return ipcRenderer.invoke(setTrackCoverChannel, trackId) as Promise<Track | null>;

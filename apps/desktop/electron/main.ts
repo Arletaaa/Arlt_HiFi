@@ -12,7 +12,7 @@ import type {
 } from "@arlhifi/shared";
 import { appEntryUrl, createAppProtocolHandler, registerAppProtocolPrivileges } from "./app-protocol.js";
 import { importAudioFiles } from "./library-import.js";
-import { removeLibraryTrack, renameLibraryTrack, setLibraryTrackCover } from "./library-manage.js";
+import { editLibraryTrack, removeLibraryTrack, renameLibraryTrack, setLibraryTrackCover } from "./library-manage.js";
 import { pruneMissingEntries, readLibraryManifest, writeLibraryManifest } from "./library-manifest.js";
 import { createMediaProtocolAccess, registerMediaProtocolPrivileges } from "./media-protocol.js";
 import { collectAudioFilePaths } from "./music-scanner.js";
@@ -30,6 +30,7 @@ const importAudioFilesChannel = "library:import-files";
 const importAudioFolderChannel = "library:import-folder";
 const loadLibraryChannel = "library:load";
 const renameTrackChannel = "library:rename-track";
+const editTrackChannel = "library:edit-track";
 const setTrackCoverChannel = "library:set-track-cover";
 const deleteTrackChannel = "library:delete-track";
 const openLibraryFolderChannel = "library:open-folder";
@@ -199,8 +200,39 @@ ipcMain.handle(renameTrackChannel, async (_event, rawTrackId: unknown, rawTitle:
   return outcome.track;
 });
 
-ipcMain.handle(setTrackCoverChannel, async (_event, rawTrackId: unknown): Promise<Track | null> => {
+ipcMain.handle(editTrackChannel, async (_event, rawTrackId: unknown, rawEdit: unknown): Promise<Track> => {
   if (typeof rawTrackId !== "string") {
+    throw new Error("曲目 id 不能为空。");
+  }
+
+  const edit = typeof rawEdit === "object" && rawEdit !== null ? (rawEdit as Record<string, unknown>) : {};
+  const album = typeof edit.album === "string" ? edit.album : "";
+  const albumArtist = typeof edit.albumArtist === "string" ? edit.albumArtist : "";
+  const discNumber = typeof edit.discNumber === "number" ? edit.discNumber : 0;
+  const trackNumber = typeof edit.trackNumber === "number" ? edit.trackNumber : 0;
+
+  const manifestPath = getLibraryManifestPath();
+  const manifest = await readLibraryManifest(manifestPath);
+  const outcome = editLibraryTrack({
+    album,
+    albumArtist,
+    discNumber,
+    entries: manifest.entries,
+    trackId: rawTrackId,
+    trackNumber
+  });
+
+  if (!outcome) {
+    throw new Error("找不到该曲目。");
+  }
+
+  await writeLibraryManifest(manifestPath, { entries: outcome.entries, version: manifest.version });
+  applyMediaAccess(outcome.entries.map((entry) => entry.track));
+
+  return outcome.track;
+});
+
+ipcMain.handle(setTrackCoverChannel, async (_event, rawTrackId: unknown): Promise<Track | null> => {  if (typeof rawTrackId !== "string") {
     throw new Error("曲目 id 不能为空。");
   }
 
