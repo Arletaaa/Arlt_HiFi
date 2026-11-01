@@ -27,10 +27,6 @@ const createDemoTrack = (
   metadataSource: "filename"
 });
 
-/** 开发预览里让每 7 张有一张收藏，便于核对金边效果。 */
-const demoFavoriteIds = (tracks: readonly Track[]): readonly string[] =>
-  tracks.filter((_track, index) => index % 7 === 0).map((track) => track.id);
-
 const demoTracks: readonly Track[] = [
   createDemoTrack(1, "夜想曲 第零番", "灯火アンサンブル", "静かな星", 286, "flac", 96000, 24),
   createDemoTrack(2, "星屑リフレイン", "星屑リフレイン", "星屑リフレイン", 243, "flac", 44100, 16),
@@ -108,7 +104,6 @@ export const installDemoDesktopApi = (): void => {
   }
 
   usePlayerStore.getState().loadLibrary(demoTracks);
-  usePlayerStore.setState({ favorites: demoFavoriteIds(demoTracks) });
 
   if (!params.has("track")) {
     return;

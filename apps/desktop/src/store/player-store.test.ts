@@ -146,30 +146,6 @@ describe("player store actions", () => {
   });
 });
 
-describe("favorites", () => {
-  it("toggles a track id in and out of the favorites list", () => {
-    const store = createPlayerStore();
-
-    store.getState().toggleFavorite("track-1");
-    expect(store.getState().favorites).toEqual(["track-1"]);
-
-    store.getState().toggleFavorite("track-2");
-    expect(store.getState().favorites).toEqual(["track-1", "track-2"]);
-
-    store.getState().toggleFavorite("track-1");
-    expect(store.getState().favorites).toEqual(["track-2"]);
-  });
-
-  it("keeps favorites when the library is reloaded", () => {
-    const store = createPlayerStore();
-
-    store.getState().toggleFavorite("track-1");
-    store.getState().loadLibrary([createTrack("track-1", "First")]);
-
-    expect(store.getState().favorites).toEqual(["track-1"]);
-  });
-});
-
 describe("queue editing", () => {
   it("removes a non-current track without touching playback", () => {
     const store = createPlayerStore();

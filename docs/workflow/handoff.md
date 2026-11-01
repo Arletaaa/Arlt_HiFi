@@ -11,14 +11,14 @@
 
 - **范围定案**：2026-10-30 [ADR 007](../decisions/007-v1-scope-convergence.md)：v1.0 固定单排货架；删除收藏需求；列表/WebGL/低帧率降级不做门禁；进度与参数展示迁入 CD 详情新 UI；原 MVP / 长廊规格标记取消。
 - **真机**：2026-10-30 用户在真实桌面启动并跑过主流程，确认正常。
-- **门禁**：2026-10-30 复跑 `pnpm typecheck` / `pnpm test` / `pnpm build` 全绿；测试 19 个文件 / 157 个用例（desktop 140 + shared 11 + harness 6）。
-- **打包**：新增 `electron-builder@26.18.0`，`electron` 移到 devDependencies，补 `author`；产出 `apps/desktop/release/ArltHiFiPlayer-0.1.0-portable.exe`（98,435,549 B，未签名）。
+- **门禁**：2026-10-30 复跑 `pnpm typecheck` / `pnpm test` / `pnpm build` 全绿；测试 19 个文件 / 154 个用例（desktop 137 + shared 11 + harness 6）。
+- **打包**：新增 `electron-builder@26.18.0`，`electron` 移到 devDependencies，补 `author`；产出 `apps/desktop/release/ArltHiFiPlayer-0.1.0-portable.exe`（98,434,409 B，未签名）。
 - **装包冒烟**：portable 从 `LOCALAPPDATA` 启动成功，加载 `arlt-hifi-app://bundle/index.html`，canvas / preload / 封面 / 5 张专辑正常（`.verify/shots/package-smoke.png`）。
 - **播放验证**：详情播放条 1440×900 实拍 `.verify/shots/detail-player-controls.png`；store/queue/元数据单测覆盖顺序、循环、随机、单曲 CD、seek、上一首 3 秒规则、CD cue 与暂停切歌。
 - **CD 管理**：管理弹窗新增「CD 信息」，逐首编辑专辑 / 专辑艺术家 / 碟号 / 音轨号；相同值自动合并为一张 CD，只写 manifest，不移动文件、不写标签。
-- **未完成**：装包版完整交互手测；批量选择合并与旧库重扫；收藏死代码清理。
+- **未完成**：装包版完整交互手测；批量选择合并与旧库重扫。
 - **文档**：README / roadmap / next-steps / 唱片机 / ADR 003/005/006/007/008 / [CD 模型](../product/cd-album-model.md)已同步。
-- **下一步**：批量 CD 合并 / 旧库重扫；清理 favorites；装包完整交互手测。导入侧不做文件夹归组，保持标签自动识别。
+- **下一步**：批量 CD 合并 / 旧库重扫；装包完整交互手测。导入侧不做文件夹归组，保持标签自动识别。
 - **注意**：10-28 的“切回窗口刷新曲库”在改为叠加弹窗时被移除，当前只在启动、导入、管理操作后重新 `loadLibrary`。
 
 ## 这一阶段的成果（2026-10-27 快照）
@@ -161,7 +161,7 @@
 
 ### 保留（有意为之）
 
-- `favorites` 仍在 store / `settings.json` 里；2026-10-30 已决定删除该需求（ADR 007），代码待清理。
+- `favorites` 已删除（2026-11-01）：类型、store、settings、demo 与单测均已清理，旧 `settings.json` 字段会被忽略。
 - `packages/ui` 的 Button / Knob 等组件当前没有调用方，但 token 样式 `@arlhifi/ui/styles.css` 仍被使用，包整体保留。
 - `shared` 的 `formatSampleRate / formatBitDepth / getQualityLabel` 等格式化函数暂时没有 UI 调用方，将用于 CD 详情信息条。
 - theme / motion 设置仍会写到 `<html data-theme/data-motion>`，由 `@arlhifi/ui` 的样式消费。
@@ -236,8 +236,8 @@
 - 详情场景的盘片自转：10-30 已由唱片机转盘带动 CD 旋转，原限制解除。
 - 网页预览的 `localStorage` 与 Electron 的 `settings.json` 是两套存储，字段变更时要同步 `mergeSettings`；且 demo API 存在时 `useSaveSettings` 走 demo 的 `saveSettings`，preview 实际不写 localStorage。
 - `?merge=1` 的网格合并路径保留但默认关闭，未验证收益。
-- 收藏需求已删除（ADR 007）；现有 store / `settings.json` 字段待清理。
-- `electron-builder` 打包从未实际执行；开发版真实桌面已由用户于 10-30 确认，装包版仍需验证。
+- 收藏需求已删除（ADR 007）；store / `settings.json` 字段已清理（2026-11-01）。
+- `electron-builder` 已于 2026-10-30 实际执行；装包完整交互仍待手测。
 - `packages/ui` 的组件与 `shared` 的部分格式化函数暂无调用方（见"保留"）。
 
 ### 2. 后续方向
@@ -256,7 +256,7 @@
 
 ```powershell
 pnpm typecheck          # 四个 workspace 项目全绿（desktop 两个 tsconfig + ui + shared + harness）
-pnpm test               # desktop 140 + shared 11 + harness 6（共 157）
+pnpm test               # desktop 137 + shared 11 + harness 6（共 154）
 pnpm build              # esbuild 打包 main/preload + vite 打包 dist
 pnpm --filter @arlhifi/desktop dist  # electron-builder portable
 pnpm dev:web            # http://localhost:5173/?demo=1&perf=1
@@ -266,7 +266,7 @@ pnpm start              # 跑 dist；可跟参数，如 pnpm start -- --remote-d
 
 2026-10-30 验收补充：
 
-- `pnpm typecheck`、`pnpm test`（157）、`pnpm build` 全部通过。
+- `pnpm typecheck`、`pnpm test`（154）、`pnpm build` 全部通过。
 - `ArltHiFiPlayer-0.1.0-portable.exe` 已产出；从 `LOCALAPPDATA` 启动，app 协议、canvas、preload、封面与曲库加载正常。
 - 装包版的完整导入/播放/唱片机交互仍需真机手测；安装包未签名。
 

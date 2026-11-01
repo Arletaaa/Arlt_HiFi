@@ -5,7 +5,6 @@ import { getNextIndex, getPreviousIndex, getReplacementIndex, pruneQueueToLibrar
 
 export interface LibraryActions {
   readonly loadLibrary: (library: readonly Track[]) => void;
-  readonly toggleFavorite: (trackId: string) => void;
 }
 
 export interface QueueActions {
@@ -40,8 +39,7 @@ export type PlayerStore = PlayerSnapshot & PlayerActions;
 export const createInitialPlayerState = (): PlayerSnapshot => ({
   ...initialPlayerSnapshot,
   library: [...initialPlayerSnapshot.library],
-  queue: [...initialPlayerSnapshot.queue],
-  favorites: [...initialPlayerSnapshot.favorites]
+  queue: [...initialPlayerSnapshot.queue]
 });
 
 const clampVolume = (volume: number): number => Math.max(0, Math.min(100, Math.round(volume)));
@@ -100,13 +98,6 @@ const createLibrarySlice: StateCreator<PlayerStore, [], [], LibraryActions> = (s
         status: currentTrack ? state.status : "idle"
       };
     });
-  },
-  toggleFavorite: (trackId) => {
-    set((state) => ({
-      favorites: state.favorites.includes(trackId)
-        ? state.favorites.filter((id) => id !== trackId)
-        : [...state.favorites, trackId]
-    }));
   }
 });
 

@@ -7,7 +7,7 @@
 ## 0. 已定范围（2026-10-30）
 
 - **画廊收敛为单排货架**：长廊 / Bay 生长 / 跨 Bay 移动移出 v1.0，转入 v1.1+ backlog。
-- **删除收藏需求**：不做入口、金边、列表 ★；现有 favorites 代码作为死代码清理。
+- **删除收藏需求**：不做入口、金边、列表 ★；`favorites` 代码已从类型、store、settings、demo 与单测清理。
 - **降级不做 v1.0 门禁**：列表视图、无 WebGL 降级、低帧率自动降级都不要求；只保留基础键盘与 ARIA。
 - **进度与参数展示迁入 CD 详情新 UI**：不恢复旧播放栏，在详情场景里加轻量信息条。
 - **原 MVP 与长廊规格标记取消**：保留历史，不再作为验收基线。
@@ -25,13 +25,13 @@
 ### P0-1 门禁复跑
 
 - [x] 在非 DSH 沙箱环境跑 `pnpm typecheck` / `pnpm test` / `pnpm build`。
-- 结果：三条命令退出码 0；`typecheck` 4 个 workspace 项目；`test` 19 个文件 / 157 个用例（desktop 140 + shared 11 + harness 6）；`build` 产出 `dist` 与 `dist-electron`。
+- 结果：三条命令退出码 0；`typecheck` 4 个 workspace 项目；`test` 19 个文件 / 154 个用例（desktop 137 + shared 11 + harness 6）；`build` 产出 `dist` 与 `dist-electron`。
 - 备注：Vite 仍提示 `gallery-stage` chunk 907.93 kB（gzip 247.56 kB），不阻塞构建。
 
 ### P0-2 Windows portable 打包
 
 - [x] `pnpm --filter @arlhifi/desktop dist`（配置见 `apps/desktop/electron-builder.yml`）。
-- 结果：`apps/desktop/release/ArltHiFiPlayer-0.1.0-portable.exe`，98,435,549 B；未签名。
+- 结果：`apps/desktop/release/ArltHiFiPlayer-0.1.0-portable.exe`，98,434,409 B；未签名。
 - 构建修正：`electron` 移到 `devDependencies`，新增 `electron-builder@26.18.0` 与 `author`。
 
 ### P0-3 安装包冒烟
@@ -59,7 +59,7 @@
 - **单曲 CD**：仍然显示完整按钮；顺序模式下“下一首”重播当前曲，避免按钮失效。
 - **参数**：真实格式 / 采样率 / 位深 / 质量，无 mock；缺失显示 `—`。
 - **设置**：设置浮层不再有播放模式。
-- **验证**：typecheck/build 通过；store/queue 单测 157 项全绿（2026-10-30）；详情条 1440×900 实拍见 `.verify/shots/detail-player-controls.png`（dev 预览态）。
+- **验证**：typecheck/build 通过；store/queue 单测 154 项全绿（2026-10-30）；详情条 1440×900 实拍见 `.verify/shots/detail-player-controls.png`（dev 预览态）。
 
 ### 3.2 CD 多曲入库与管理（已实现基础版）
 
@@ -70,9 +70,9 @@
 - 不做“导入文件夹作为一张 CD”；同一专辑由软件按标签自动识别，标签不对时由用户手动管理。
 - 说明见 [CD 模型与多曲归组](cd-album-model.md)。
 
-### 3.3 清理收藏死代码
+### 3.3 清理收藏死代码（已删除）
 
-- [ ] 删除 `favorites`：shared 类型、`AppSettings` / `PlayerSnapshot`、player-store 的 state/action、settings-store 的读写、use-settings-sync、demo 数据、相关单测。
+- [x] 删除 `favorites`：shared 类型、`AppSettings` / `PlayerSnapshot`、player-store 的 state/action、settings-store 的读写、use-settings-sync、demo 数据、相关单测。
 - 验收：仓库内不再有 `favorites` / `toggleFavorite` 引用；旧 `settings.json` 里的 `favorites` 字段被忽略；typecheck/test 通过。
 
 ### 3.4 基础键盘与 ARIA（可选）
@@ -100,8 +100,8 @@
 ## 5. 建议顺序
 
 1. **P0-1 门禁复跑 → P0-2 打包 → P0-3 装包冒烟**：先证明“可交付”。
-2. **CD 多曲入库与管理**：导入文件夹作为 CD + 管理合并；这是下一步产品工作。
-3. **清理收藏死代码**：独立提交，便于回滚。
+2. **CD 多曲管理**：逐首编辑已完成；下一步批量选择合并 + 旧库重扫。
+3. **清理收藏死代码**：已完成。
 4. **可选键盘 / 曲库运维 / P2**：不阻塞交付。
 
 ## 6. 明确不做（v1.0）

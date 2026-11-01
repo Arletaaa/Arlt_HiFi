@@ -37,9 +37,6 @@ const normalizePlaybackMode = (value: unknown): PlaybackMode => {
   return defaultAppSettings.playbackMode;
 };
 
-const readStringArray = (value: unknown): readonly string[] =>
-  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-
 /** 把磁盘上的任意 JSON 收敛为合法设置（纯函数，可单测）。 */
 const readPreset = (raw: unknown): ScenePreset => {
   const record = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
@@ -56,13 +53,12 @@ const readPreset = (raw: unknown): ScenePreset => {
 
 export const mergeSettings = (raw: unknown): AppSettings => {
   if (typeof raw !== "object" || raw === null) {
-    return { ...defaultAppSettings, favorites: [] };
+    return defaultAppSettings;
   }
 
   const record = raw as Record<string, unknown>;
 
   return {
-    favorites: readStringArray(record.favorites),
     librarySort: isLibrarySortKey(record.librarySort) ? record.librarySort : defaultAppSettings.librarySort,
     motionTier: isMotionTier(record.motionTier) ? record.motionTier : defaultAppSettings.motionTier,
     playbackMode: normalizePlaybackMode(record.playbackMode),
@@ -80,7 +76,7 @@ export const readSettings = async (userDataDirectory: string): Promise<AppSettin
 
     return mergeSettings(JSON.parse(contents));
   } catch {
-    return { ...defaultAppSettings, favorites: [] };
+    return defaultAppSettings;
   }
 };
 

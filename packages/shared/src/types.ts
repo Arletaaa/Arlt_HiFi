@@ -46,7 +46,6 @@ export interface PlayerSnapshot {
   readonly status: PlaybackStatus;
   readonly currentTrack: Track | null;
   readonly queue: readonly Track[];
-  readonly favorites: readonly string[];
   readonly playbackMode: PlaybackMode;
   /** 当前曲目每一次“从头开始”的序号；循环单曲时也要让音频层重跑。 */
   readonly playbackEpoch: number;
@@ -75,7 +74,6 @@ export const defaultScenePreset: ScenePreset = {
 };
 
 export interface AppSettings {
-  readonly favorites: readonly string[];
   readonly librarySort: LibrarySortKey;
   readonly motionTier: MotionTier;
   readonly playbackMode: PlaybackMode;
@@ -85,7 +83,6 @@ export interface AppSettings {
 }
 
 export const defaultAppSettings: AppSettings = {
-  favorites: [],
   librarySort: "title",
   motionTier: "standard",
   playbackMode: "sequential",

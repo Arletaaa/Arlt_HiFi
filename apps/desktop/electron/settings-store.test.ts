@@ -4,13 +4,12 @@ import { mergeSettings } from "./settings-store.js";
 
 describe("settings merging", () => {
   it("returns defaults for missing or invalid payloads", () => {
-    expect(mergeSettings(null)).toEqual({ ...defaultAppSettings, favorites: [] });
-    expect(mergeSettings("nope")).toEqual({ ...defaultAppSettings, favorites: [] });
+    expect(mergeSettings(null)).toEqual(defaultAppSettings);
+    expect(mergeSettings("nope")).toEqual(defaultAppSettings);
   });
 
   it("keeps valid values", () => {
     const merged = mergeSettings({
-      favorites: ["a", "b"],
       librarySort: "duration",
       motionTier: "rich",
       playbackMode: "shuffle",
@@ -19,7 +18,6 @@ describe("settings merging", () => {
     });
 
     expect(merged).toEqual({
-      favorites: ["a", "b"],
       librarySort: "duration",
       motionTier: "rich",
       playbackMode: "shuffle",
@@ -48,11 +46,5 @@ describe("settings merging", () => {
     expect(merged.motionTier).toBe(defaultAppSettings.motionTier);
     expect(merged.playbackMode).toBe(defaultAppSettings.playbackMode);
     expect(merged.volume).toBe(100);
-  });
-
-  it("filters non-string favorites", () => {
-    const merged = mergeSettings({ favorites: ["a", 3, null, "b"] });
-
-    expect(merged.favorites).toEqual(["a", "b"]);
   });
 });

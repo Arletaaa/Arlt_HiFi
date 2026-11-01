@@ -62,7 +62,6 @@ export const App = () => {
 
           hydrateSettings(parsed);
           usePlayerStore.setState({
-            favorites: parsed.favorites,
             playbackMode,
             volume: parsed.volume
           });
@@ -83,7 +82,6 @@ export const App = () => {
 
       hydrateSettings(settings);
       usePlayerStore.setState({
-        favorites: settings.favorites,
         playbackMode: settings.playbackMode,
         volume: settings.volume
       });
