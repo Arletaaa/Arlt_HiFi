@@ -16,7 +16,7 @@ export const ManageOverlay = ({ onClose }: ManageOverlayProps) => {
   const library = usePlayerStore((state) => state.library);
   const loadLibrary = usePlayerStore((state) => state.loadLibrary);
   const librarySort = useSettingsStore((state) => state.librarySort);
-  const { busyTrackId, deleteTrack, editTrack, error: manageError, renameTrack, setTrackCover } = useLibraryManage();
+  const { batchBusy, busyTrackId, deleteTrack, editTrack, editTracks, error: manageError, renameTrack, setTrackCover } = useLibraryManage();
   const [actionError, setActionError] = useState<string | null>(null);
   const tracks = useMemo(() => sortTracks(library, librarySort), [library, librarySort]);
 
@@ -101,6 +101,9 @@ export const ManageOverlay = ({ onClose }: ManageOverlayProps) => {
             <p className="manage-dialog__meta">
               相同「专辑 + 专辑艺术家 + 碟号」会合并为一张 CD；音轨号决定 CD 内顺序。
             </p>
+            <p className="manage-dialog__meta">
+              勾选多首可批量合并，音轨号按列表顺序自动 1..N。
+            </p>
           </header>
 
           <div className="library-import__actions">
@@ -119,8 +122,10 @@ export const ManageOverlay = ({ onClose }: ManageOverlayProps) => {
           ) : null}
 
           <TrackManager
+            batchBusy={batchBusy}
             busyTrackId={busyTrackId}
             error={manageError}
+            onBatchEdit={(trackIds, edit) => editTracks(trackIds, edit)}
             onCover={(trackId) => setTrackCover(trackId)}
             onDelete={(trackId) => deleteTrack(trackId)}
             onEdit={(trackId, edit) => editTrack(trackId, edit)}

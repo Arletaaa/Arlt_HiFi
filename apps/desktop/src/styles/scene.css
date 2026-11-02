@@ -851,6 +851,50 @@
   border-radius: 12px;
 }
 
+.library-manage__bulk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+
+.library-manage__bulk-count {
+  margin-right: auto;
+  color: rgba(243, 238, 230, 0.45);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.library-manage__check {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.library-manage__batch-editor {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr 80px auto;
+  align-items: end;
+  gap: 8px;
+  padding: 10px 10px 8px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(243, 238, 230, 0.14);
+  border-radius: 10px;
+  background: rgba(10, 13, 22, 0.28);
+}
+
+.library-manage__batch-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.library-manage__batch-editor .library-manage__hint {
+  grid-column: 1 / -1;
+}
+
 .library-manage__row {
   display: flex;
   align-items: center;

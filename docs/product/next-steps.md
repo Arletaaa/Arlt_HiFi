@@ -31,7 +31,7 @@
 ### P0-2 Windows portable 打包
 
 - [x] `pnpm --filter @arlhifi/desktop dist`（配置见 `apps/desktop/electron-builder.yml`）。
-- 结果：`apps/desktop/release/ArltHiFiPlayer-0.1.0-portable.exe`，98,434,409 B；未签名。
+- 结果：`apps/desktop/release/ArltHiFiPlayer-0.1.0-portable.exe`，98,428,965 B；未签名。
 - 构建修正：`electron` 移到 `devDependencies`，新增 `electron-builder@26.18.0` 与 `author`。
 
 ### P0-3 安装包冒烟
@@ -65,7 +65,7 @@
 
 - [x] 读取 `albumArtist` / `discNumber` / `trackNumber`，按 `albumArtist + album + disc` 归组，按碟号/音轨号排序。
 - [x] 管理层逐首编辑专辑/专辑艺术家/碟号/音轨号；相同值自动合并为一张 CD，覆盖写入 manifest，不移动文件、不写标签。
-- [ ] 批量选择多首一起合并。
+- [x] 批量勾选合并到一张 CD，音轨号按列表顺序 1..N。
 - [ ] 旧 manifest 重扫，补齐新字段。
 - 不做“导入文件夹作为一张 CD”；同一专辑由软件按标签自动识别，标签不对时由用户手动管理。
 - 说明见 [CD 模型与多曲归组](cd-album-model.md)。

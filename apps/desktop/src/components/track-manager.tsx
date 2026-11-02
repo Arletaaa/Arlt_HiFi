@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { formatDuration, type Track, type TrackMetadataEdit } from "@arlhifi/shared";
+import type { BatchTrackEdit } from "../hooks/use-library-manage";
 
 interface MetadataDraft {
   album: string;
@@ -9,8 +10,10 @@ interface MetadataDraft {
 }
 
 export interface TrackManagerProps {
+  readonly batchBusy: boolean;
   readonly busyTrackId: string | null;
   readonly error: string | null;
+  readonly onBatchEdit: (trackIds: readonly string[], edit: BatchTrackEdit) => Promise<boolean>;
   readonly onCover: (trackId: string) => Promise<boolean>;
   readonly onDelete: (trackId: string) => Promise<boolean>;
   readonly onEdit: (trackId: string, edit: TrackMetadataEdit) => Promise<boolean>;
@@ -26,8 +29,10 @@ const toCueNumber = (value: string): number => {
 
 /** 曲目管理列表：行内重命名、CD 信息、设封面、删除（二次确认）。 */
 export const TrackManager = ({
+  batchBusy,
   busyTrackId,
   error,
+  onBatchEdit,
   onCover,
   onDelete,
   onEdit,
@@ -42,6 +47,13 @@ export const TrackManager = ({
     albumArtist: "",
     discNumber: "0",
     trackNumber: "0"
+  });
+  const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
+  const [batchEditing, setBatchEditing] = useState(false);
+  const [batchDraft, setBatchDraft] = useState({
+    album: "",
+    albumArtist: "",
+    discNumber: "0"
   });
   const [confirmTrackId, setConfirmTrackId] = useState<string | null>(null);
 
@@ -105,6 +117,63 @@ export const TrackManager = ({
     }
   };
 
+  const selectedTracks = tracks.filter((track) => selectedIds.includes(track.id));
+
+  const toggleSelected = (trackId: string): void => {
+    setSelectedIds((current) =>
+      current.includes(trackId)
+        ? current.filter((id) => id !== trackId)
+        : [...current, trackId]
+    );
+  };
+
+  const beginBatch = (): void => {
+    if (selectedTracks.length < 2) {
+      return;
+    }
+
+    setEditingTrackId(null);
+    setMetadataTrackId(null);
+    setConfirmTrackId(null);
+    const first = selectedTracks[0];
+
+    if (!first) {
+      return;
+    }
+
+    setBatchDraft({
+      album: new Set(selectedTracks.map((track) => track.album)).size === 1 ? first.album : "",
+      albumArtist:
+        new Set(selectedTracks.map((track) => track.albumArtist?.trim() || track.artist)).size === 1
+          ? first.albumArtist?.trim() || first.artist
+          : "Various Artists",
+      discNumber: String(first.discNumber ?? 0)
+    });
+    setBatchEditing(true);
+  };
+
+  const submitBatch = async (): Promise<void> => {
+    const album = batchDraft.album.trim();
+
+    if (album.length === 0 || selectedTracks.length < 2) {
+      return;
+    }
+
+    if (
+      await onBatchEdit(
+        selectedTracks.map((track) => track.id),
+        {
+          album,
+          albumArtist: batchDraft.albumArtist.trim(),
+          discNumber: toCueNumber(batchDraft.discNumber)
+        }
+      )
+    ) {
+      setBatchEditing(false);
+      setSelectedIds([]);
+    }
+  };
+
   if (tracks.length === 0) {
     return <p className="manage-dialog__empty">曲库还是空的，先在设置里导入音乐。</p>;
   }
@@ -115,6 +184,107 @@ export const TrackManager = ({
         <p className="library-import__status is-error" role="alert">
           {error}
         </p>
+      ) : null}
+
+      <div className="library-manage__bulk">
+        <span className="library-manage__bulk-count">
+          {selectedTracks.length > 0 ? `已选 ${selectedTracks.length} 首` : "勾选多首可合并"}
+        </span>
+        <button
+          className="library-manage__action"
+          disabled={batchBusy || selectedTracks.length < 2}
+          onClick={beginBatch}
+          type="button"
+        >
+          合并到一张 CD
+        </button>
+        {selectedTracks.length > 0 ? (
+          <button
+            className="library-manage__action"
+            disabled={batchBusy}
+            onClick={() => {
+              setSelectedIds([]);
+              setBatchEditing(false);
+            }}
+            type="button"
+          >
+            清空选择
+          </button>
+        ) : null}
+      </div>
+
+      {batchEditing ? (
+        <div className="library-manage__batch-editor">
+          <label className="library-manage__field">
+            <span>专辑</span>
+            <input
+              aria-label="批量合并专辑"
+              autoFocus
+              className="library-manage__input"
+              onChange={(event) => {
+                setBatchDraft((current) => ({ ...current, album: event.currentTarget.value }));
+              }}
+              value={batchDraft.album}
+            />
+          </label>
+          <label className="library-manage__field">
+            <span>专辑艺术家</span>
+            <input
+              aria-label="批量合并专辑艺术家"
+              className="library-manage__input"
+              onChange={(event) => {
+                setBatchDraft((current) => ({
+                  ...current,
+                  albumArtist: event.currentTarget.value
+                }));
+              }}
+              placeholder="缺省回退到艺术家"
+              value={batchDraft.albumArtist}
+            />
+          </label>
+          <label className="library-manage__field">
+            <span>碟号</span>
+            <input
+              aria-label="批量合并碟号"
+              className="library-manage__input"
+              max={999}
+              min={0}
+              onChange={(event) => {
+                setBatchDraft((current) => ({
+                  ...current,
+                  discNumber: event.currentTarget.value
+                }));
+              }}
+              type="number"
+              value={batchDraft.discNumber}
+            />
+          </label>
+          <div className="library-manage__batch-actions">
+            <button
+              className="library-manage__action"
+              disabled={batchBusy || batchDraft.album.trim().length === 0}
+              onClick={() => {
+                void submitBatch();
+              }}
+              type="button"
+            >
+              合并 {selectedTracks.length} 首
+            </button>
+            <button
+              className="library-manage__action"
+              disabled={batchBusy}
+              onClick={() => {
+                setBatchEditing(false);
+              }}
+              type="button"
+            >
+              取消
+            </button>
+          </div>
+          <p className="library-manage__hint">
+            合并后按当前列表顺序写音轨号 1..N；只改清单，不移动文件、不写标签。
+          </p>
+        </div>
       ) : null}
 
       <ul className="library-manage__list">
@@ -129,6 +299,16 @@ export const TrackManager = ({
               className={`library-manage__row${editingMetadata ? " is-editing" : ""}`}
               key={track.id}
             >
+              <input
+                aria-label={`选择 ${track.title}`}
+                checked={selectedIds.includes(track.id)}
+                className="library-manage__check"
+                disabled={batchBusy}
+                onChange={() => {
+                  toggleSelected(track.id);
+                }}
+                type="checkbox"
+              />
               <div className="library-manage__meta">
                 {editing ? (
                   <input
