@@ -22,6 +22,7 @@ Var arltInstallTarget
 Var arltLibraryTarget
 Var arltLibraryEdited
 Var arltSyncing
+Var arltWritable
 Var arltPathValue
 
 ; .onInit 里给出默认值：静默安装、升级、以及页面首次显示都依赖这些变量。
@@ -66,6 +67,28 @@ Function ArltTrimPath
     IntOp $2 $0 - 1
     StrCpy $arltPathValue "$arltPathValue" $2
   ${Loop}
+FunctionEnd
+
+; 检查 $arltPathValue 能否创建并在其中写文件；结果写入 $arltWritable（1 可写 / 0 不可写）。
+Function ArltCheckWritable
+  StrCpy $arltWritable "0"
+
+  ClearErrors
+  CreateDirectory "$arltPathValue"
+  ${If} ${Errors}
+    Return
+  ${EndIf}
+
+  ClearErrors
+  FileOpen $9 "$arltPathValue\.arlt-write-probe" w
+  ${If} ${Errors}
+    Return
+  ${EndIf}
+
+  FileWrite $9 "probe"
+  FileClose $9
+  Delete "$arltPathValue\.arlt-write-probe"
+  StrCpy $arltWritable "1"
 FunctionEnd
 
 !macro customPageAfterChangeDir
@@ -125,6 +148,14 @@ FunctionEnd
     Call ArltTrimPath
     StrCpy $INSTDIR "$arltPathValue"
 
+    StrCpy $arltPathValue "$INSTDIR"
+    Call ArltCheckWritable
+    ${If} $arltWritable != "1"
+      MessageBox MB_ICONEXCLAMATION|MB_OKCANCEL "当前无法写入：$INSTDIR$\r$\n可能是权限不足或该位置受保护。若这是 Program Files 等系统目录，请返回上一步选择“为所有用户安装”让安装器提权；否则请换一个目录（例如 H:\Apps\Arlt-HiFi）。$\r$\n点击“确定”继续尝试，点击“取消”返回修改。" IDOK arltInstallWritableOk
+      Abort
+      arltInstallWritableOk:
+    ${EndIf}
+
     ${NSD_GetText} $arltLibraryField $arltLibraryTarget
     StrCpy $0 "$arltLibraryTarget" 1
     ${If} $0 == ""
@@ -134,6 +165,14 @@ FunctionEnd
     StrCpy $arltPathValue "$arltLibraryTarget"
     Call ArltTrimPath
     StrCpy $arltLibraryTarget "$arltPathValue"
+
+    StrCpy $arltPathValue "$arltLibraryTarget"
+    Call ArltCheckWritable
+    ${If} $arltWritable != "1"
+      MessageBox MB_ICONEXCLAMATION|MB_OKCANCEL "当前无法写入曲库目录：$arltLibraryTarget$\r$\n请换一个位置（例如 H:\Apps\Arlt-HiFi Library）。$\r$\n点击“确定”继续尝试，点击“取消”返回修改。" IDOK arltLibraryWritableOk
+      Abort
+      arltLibraryWritableOk:
+    ${EndIf}
   FunctionEnd
 
   Function ArltRefreshPreviews

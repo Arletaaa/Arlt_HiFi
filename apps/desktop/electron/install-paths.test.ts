@@ -49,6 +49,16 @@ describe("readInstalledLibraryRoot", () => {
     await expect(readInstalledLibraryRoot(userData)).resolves.toBe("C:\\Music\\Arlt-HiFi Library");
   });
 
+  it("decodes the UTF-16LE install.ini written by NSIS", async () => {
+    const userData = await createUserDataDirectory();
+    await writeFile(
+      join(userData, "install.ini"),
+      Buffer.from("\uFEFF[paths]\r\nlibraryRoot=H:\\Arlt-HiFi Library\r\n", "utf16le")
+    );
+
+    await expect(readInstalledLibraryRoot(userData)).resolves.toBe("H:\\Arlt-HiFi Library");
+  });
+
   it("returns null when there is no install record (dev mode)", async () => {
     const userData = await createUserDataDirectory();
 

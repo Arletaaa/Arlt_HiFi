@@ -1,5 +1,5 @@
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 import type { Track } from "@arlt-hifi/shared";
 
 export const libraryManifestVersion = 1;
@@ -79,6 +79,21 @@ export const readLibraryManifest = async (filePath: string): Promise<LibraryMani
 export const writeLibraryManifest = async (filePath: string, manifest: LibraryManifest): Promise<void> => {
   await mkdir(dirname(filePath), { recursive: true });
   await writeFile(filePath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+};
+
+/** 只保留当前托管目录内的条目：安装时换了曲库目录后，旧目录的记录不再显示。 */
+export const filterEntriesByLibraryRoot = (
+  entries: readonly LibraryEntry[],
+  libraryRoot: string
+): readonly LibraryEntry[] => {
+  const root = resolve(libraryRoot);
+
+  return entries.filter((entry) => {
+    const target = resolve(entry.track.filePath);
+    const relativePath = relative(root, target);
+
+    return relativePath.length > 0 && !relativePath.startsWith("..") && !isAbsolute(relativePath);
+  });
 };
 
 const fileExists = async (filePath: string): Promise<boolean> => {

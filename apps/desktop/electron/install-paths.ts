@@ -28,7 +28,14 @@ export const parseInstalledLibraryRoot = (contents: string): string | null => {
 /** 读取安装器写下的曲库目录；没有安装记录（开发模式）时返回 null。 */
 export const readInstalledLibraryRoot = async (userDataDirectory: string): Promise<string | null> => {
   try {
-    return parseInstalledLibraryRoot(await readFile(join(userDataDirectory, installConfigFileName), "utf8"));
+    const buffer = await readFile(join(userDataDirectory, installConfigFileName));
+    // NSIS 的 Unicode 构建用 WriteINIStr 写出的是 UTF-16LE（带 BOM），不能按 UTF-8 读。
+    const contents =
+      buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe
+        ? buffer.subarray(2).toString("utf16le")
+        : buffer.toString("utf8");
+
+    return parseInstalledLibraryRoot(contents);
   } catch {
     return null;
   }

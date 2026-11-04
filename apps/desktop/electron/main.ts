@@ -16,7 +16,7 @@ import { appEntryUrl, createAppProtocolHandler, registerAppProtocolPrivileges } 
 import { readInstalledLibraryRoot } from "./install-paths.js";
 import { importAudioFiles } from "./library-import.js";
 import { applyLibraryEdits, editLibraryTrack, removeLibraryTrack, renameLibraryTrack, setLibraryTrackCover } from "./library-manage.js";
-import { pruneMissingEntries, readLibraryManifest, writeLibraryManifest } from "./library-manifest.js";
+import { filterEntriesByLibraryRoot, pruneMissingEntries, readLibraryManifest, writeLibraryManifest, type LibraryManifest } from "./library-manifest.js";
 import { createMediaProtocolAccess, registerMediaProtocolPrivileges } from "./media-protocol.js";
 import { collectAudioFilePaths } from "./music-scanner.js";
 import { rescanLibraryEntries } from "./library-rescan.js";
@@ -73,6 +73,13 @@ let installedLibraryRoot: string | null = null;
 const getLibraryDirectory = (): string => installedLibraryRoot ?? join(app.getPath("userData"), "library");
 const getLibraryManifestPath = (): string => join(app.getPath("userData"), "library.json");
 
+/** 读取清单时只保留当前曲库目录下的条目：装到新目录后，旧目录里的记录不会显示。 */
+const readLibraryManifestForCurrentRoot = async (manifestPath: string): Promise<LibraryManifest> => {
+  const manifest = await readLibraryManifest(manifestPath);
+
+  return { entries: filterEntriesByLibraryRoot(manifest.entries, getLibraryDirectory()), version: manifest.version };
+};
+
 /** 曲库整体变化后刷新媒体协议白名单（音频整体替换，封面累加）。 */
 const applyMediaAccess = (tracks: readonly Track[]): void => {
   mediaProtocolAccess.allowAudioFilePaths(tracks.map((track) => track.filePath));
@@ -92,7 +99,7 @@ const showDialog = async (
 /** 读取托管曲库：以 manifest 为准，顺手剔除已被手工删除的文件。 */
 const loadManagedLibrary = async (): Promise<readonly Track[]> => {
   const manifestPath = getLibraryManifestPath();
-  const manifest = await readLibraryManifest(manifestPath);
+  const manifest = await readLibraryManifestForCurrentRoot(manifestPath);
   const pruned = await pruneMissingEntries(manifest.entries);
 
   if (pruned.removed > 0) {
@@ -163,7 +170,7 @@ const importPaths = async (
 
   try {
     const manifestPath = getLibraryManifestPath();
-    const manifest = await readLibraryManifest(manifestPath);
+    const manifest = await readLibraryManifestForCurrentRoot(manifestPath);
     const outcome = await importAudioFiles({
       coversDirectory: getCoversDirectory(),
       entries: manifest.entries,
@@ -260,7 +267,7 @@ ipcMain.handle(loadLibraryChannel, async (): Promise<readonly Track[]> => loadMa
 
 ipcMain.handle(rescanLibraryChannel, async (): Promise<LibraryRescanResult> => {
   const manifestPath = getLibraryManifestPath();
-  const manifest = await readLibraryManifest(manifestPath);
+  const manifest = await readLibraryManifestForCurrentRoot(manifestPath);
   const outcome = await rescanLibraryEntries({ entries: manifest.entries });
 
   if (outcome.updated > 0) {
@@ -289,7 +296,7 @@ ipcMain.handle(renameTrackChannel, async (_event, rawTrackId: unknown, rawTitle:
   }
 
   const manifestPath = getLibraryManifestPath();
-  const manifest = await readLibraryManifest(manifestPath);
+  const manifest = await readLibraryManifestForCurrentRoot(manifestPath);
   const outcome = await renameLibraryTrack({ entries: manifest.entries, title, trackId: rawTrackId });
 
   if (!outcome) {
@@ -314,7 +321,7 @@ ipcMain.handle(editTrackChannel, async (_event, rawTrackId: unknown, rawEdit: un
   const trackNumber = typeof edit.trackNumber === "number" ? edit.trackNumber : 0;
 
   const manifestPath = getLibraryManifestPath();
-  const manifest = await readLibraryManifest(manifestPath);
+  const manifest = await readLibraryManifestForCurrentRoot(manifestPath);
   const outcome = editLibraryTrack({
     album,
     albumArtist,
@@ -358,7 +365,7 @@ ipcMain.handle(applyTrackEditsChannel, async (_event, rawEdits: unknown): Promis
   });
 
   const manifestPath = getLibraryManifestPath();
-  const manifest = await readLibraryManifest(manifestPath);
+  const manifest = await readLibraryManifestForCurrentRoot(manifestPath);
   const entries = applyLibraryEdits({ edits, entries: manifest.entries });
 
   await writeLibraryManifest(manifestPath, { entries, version: manifest.version });
@@ -384,7 +391,7 @@ ipcMain.handle(setTrackCoverChannel, async (_event, rawTrackId: unknown): Promis
   }
 
   const manifestPath = getLibraryManifestPath();
-  const manifest = await readLibraryManifest(manifestPath);
+  const manifest = await readLibraryManifestForCurrentRoot(manifestPath);
   const outcome = await setLibraryTrackCover({
     coversDirectory: getCoversDirectory(),
     entries: manifest.entries,
@@ -408,7 +415,7 @@ ipcMain.handle(deleteTrackChannel, async (_event, rawTrackId: unknown): Promise<
   }
 
   const manifestPath = getLibraryManifestPath();
-  const manifest = await readLibraryManifest(manifestPath);
+  const manifest = await readLibraryManifestForCurrentRoot(manifestPath);
   const outcome = await removeLibraryTrack({
     coversDirectory: getCoversDirectory(),
     entries: manifest.entries,

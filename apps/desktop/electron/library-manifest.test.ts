@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { Track } from "@arlt-hifi/shared";
 import {
   emptyLibraryManifest,
+  filterEntriesByLibraryRoot,
   libraryManifestVersion,
   parseLibraryManifest,
   pruneMissingEntries,
@@ -68,6 +69,19 @@ describe("library manifest parsing", () => {
     });
 
     expect(manifest.entries).toEqual([valid]);
+  });
+});
+
+describe("library manifest filtering", () => {
+  it("keeps only entries under the current library root", () => {
+    const base = join(tmpdir(), "arlt-hifi-root");
+    const root = join(base, "Arlt-HiFi Library");
+    const inside = join(root, "Aoi Kaze", "Terrace EP", "Blue Hour.flac");
+    const sibling = join(base, "Arlt-HiFi Library 2", "Blue Hour.flac");
+
+    const entries = [sampleEntry(inside), sampleEntry(sibling), sampleEntry(root)];
+
+    expect(filterEntriesByLibraryRoot(entries, root).map((entry) => entry.track.filePath)).toEqual([inside]);
   });
 });
 
