@@ -41,11 +41,11 @@ Arlt-HiFi 是一款面向本地 HiFi 音乐播放体验的 Electron 桌面音乐
 pnpm install
 pnpm build
 pnpm --filter @arlt-hifi/desktop dist   # 产物：apps/desktop/release/arlt-hifi-<version>-setup.exe
-Get-FileHash apps/desktop/release/arlt-hifi-1.0.0-setup.exe -Algorithm SHA256
+Get-FileHash apps/desktop/release/arlt-hifi-1.0.1-setup.exe -Algorithm SHA256
 ```
 
 - 安装位置与数据位置是两回事：安装向导里可以分别选择「软件安装位置」和「曲库位置」，两者都会在你选择的路径下**新建文件夹**（`Arlt-HiFi` 与 `Arlt-HiFi Library`），并实时显示最终路径。曲库导入后会把音频复制进 `Arlt-HiFi Library`，卸载不会删除它；设置、`library.json` 与封面仍在 `%APPDATA%\Arlt-HiFi`。
-- 版本记录见 [CHANGELOG.md](CHANGELOG.md)，当前版本的发布说明见 [docs/releases/v1.0.0.md](docs/releases/v1.0.0.md)。
+- 版本记录见 [CHANGELOG.md](CHANGELOG.md)，当前版本的发布说明见 [docs/releases/v1.0.1.md](docs/releases/v1.0.1.md)。
 - 许可证：[MIT](LICENSE)（第三方模型/贴图按各自许可，见 [CREDITS](apps/desktop/public/textures/CREDITS.md)）。
 - 交互参考：[The Complete Shelf](https://github.com/MengTo/complete-shelf)（MengTo），仅借鉴连续货架与抽取详情的交互思路，未使用其代码或素材。
 
@@ -74,7 +74,7 @@ pnpm --filter @arlt-hifi/desktop build:web   # 产物：apps/desktop/dist
 
 ## 当前进度
 
-v1.0.0 已发布：单排 CD 货架 + CD 盒 + 唱片机 + CD 详情信息条、搜索/进度/键盘、曲库导入与管理、标签补齐、导入取消/续传、媒体 seek 均已完成；`typecheck` / `test`（desktop 180 + shared 11）/ `build` / `build:web` 全绿。收藏、长廊/Bay、列表降级不在 v1.0；后续拆文件、性能收口与标签写回不列入本次交付。[收尾清单](docs/product/next-steps.md)、[roadmap](docs/product/roadmap.md)。
+v1.0.1 已发布：单排 CD 货架 + CD 盒 + 唱片机 + CD 详情信息条、搜索/进度/键盘、曲库导入与管理、标签补齐、导入取消/续传、媒体 seek 均已完成；`typecheck` / `test`（desktop 180 + shared 11）/ `build` / `build:web` 全绿。收藏、长廊/Bay、列表降级不在 v1.0；后续拆文件、性能收口与标签写回不列入本次交付。[收尾清单](docs/product/next-steps.md)、[roadmap](docs/product/roadmap.md)。
 
 ## 质量检查
 

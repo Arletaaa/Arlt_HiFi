@@ -75,11 +75,9 @@ let installedLibraryRoot: string | null = null;
 const getLibraryDirectory = (): string => installedLibraryRoot ?? join(app.getPath("userData"), "library");
 const getLibraryManifestPath = (): string => join(app.getPath("userData"), "library.json");
 
-/** 读取清单时只保留当前曲库目录下的条目：装到新目录后，旧目录里的记录不会显示。 */
+/** 读取完整清单（保留其它曲库目录下的条目，切换目录时不丢记录）。 */
 const readLibraryManifestForCurrentRoot = async (manifestPath: string): Promise<LibraryManifest> => {
-  const manifest = await readLibraryManifest(manifestPath);
-
-  return { entries: filterEntriesByLibraryRoot(manifest.entries, getLibraryDirectory()), version: manifest.version };
+  return readLibraryManifest(manifestPath);
 };
 
 /** 曲库整体变化后刷新媒体协议白名单（音频整体替换，封面累加）。 */
@@ -108,7 +106,8 @@ const loadManagedLibrary = async (): Promise<readonly Track[]> => {
     await writeLibraryManifest(manifestPath, { entries: pruned.entries, version: manifest.version });
   }
 
-  const tracks = pruned.entries.map((entry) => entry.track);
+  // 只在展示与媒体白名单里按当前曲库目录过滤，清单本身保留其它目录的记录。
+  const tracks = filterEntriesByLibraryRoot(pruned.entries, getLibraryDirectory()).map((entry) => entry.track);
 
   applyMediaAccess(tracks);
 
