@@ -25,8 +25,8 @@
 - 安全边界：渲染层只经 preload API 通信，音频与封面经受控媒体协议（支持 Range）读取。
 - 静态资源统一走 `assetUrl()` + Vite `BASE_URL`，桌面端（`./`）与 Pages 子路径部署共用同一套代码。
 - 质量门禁：`pnpm typecheck` 全绿；`pnpm test` 24 个文件 / 187 个用例（desktop 176 + shared 11）；`pnpm build` 与 `pnpm build:web` 均通过。
-- 发布配置：electron-builder 26.18.0，Windows NSIS 安装包（非一键安装、带开始菜单/桌面快捷方式与卸载项），`asar` 打包，产物名 `arlt-hifi-1.0.0-setup.exe`（102,765,962 B，未签名）。
-- 安装向导用自定义页（`apps/desktop/build/installer.nsh`）同时选择「软件安装位置」和「曲库位置」，两处都在用户选择的路径下新建文件夹并实时显示最终路径；曲库默认与软件目录同级（`Arlt-HiFi Library`），避免卸载误删，安装器把选择结果写进 `userData/install.ini` 供应用读取。
+- 发布配置：electron-builder 26.18.0，Windows NSIS 安装包（非一键安装、带开始菜单/桌面快捷方式与卸载项），`asar` 打包，产物名 `arlt-hifi-1.0.0-setup.exe`（102,765,961 B，未签名）。
+- 安装向导用自定义页（`apps/desktop/build/installer.nsh`）同时选择「软件安装位置」和「曲库位置」：输入框直接显示**最终路径**（选中父目录时自动补 `Arlt-HiFi` / `Arlt-HiFi Library`，并合并多余反斜杠），下方实时预览；曲库默认与软件目录同级，避免卸载误删，安装器把选择结果写进 `userData/install.ini` 供应用读取。
 - 许可证：代码 MIT（`LICENSE`），第三方模型 CC-BY 4.0 / 贴图 CC0 按原许可署名。
 
 ### 已知限制
@@ -40,4 +40,4 @@
 ### 发布产物
 
 - `arlt-hifi-1.0.0-setup.exe`
-- SHA-256：`a94675684445b704130a2453e9cb5ec9b54afd83462519fa341a8feb90216ddb`
+- SHA-256：`6b7ce0c6b99ca51de8ad024f1f89f1ef9167754f76b10869fa012af72ece3f03`

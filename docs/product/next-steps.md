@@ -33,8 +33,8 @@
 ### P0-2 Windows 安装包打包
 
 - [x] `pnpm --filter @arlt-hifi/desktop dist`（配置见 `apps/desktop/electron-builder.yml`）。
-- 1.0.0 结果：`apps/desktop/release/arlt-hifi-1.0.0-setup.exe`（NSIS 安装包），102,765,962 B；未签名；`FileVersion` / `ProductVersion` 均为 `1.0.0`。
-- SHA-256：`a94675684445b704130a2453e9cb5ec9b54afd83462519fa341a8feb90216ddb`。
+- 1.0.0 结果：`apps/desktop/release/arlt-hifi-1.0.0-setup.exe`（NSIS 安装包），102,765,961 B；未签名；`FileVersion` / `ProductVersion` 均为 `1.0.0`。
+- SHA-256：`6b7ce0c6b99ca51de8ad024f1f89f1ef9167754f76b10869fa012af72ece3f03`。
 - 安装页：`apps/desktop/build/installer.nsh` 自定义页同时选择安装位置与曲库位置，两者都在所选路径下新建文件夹并实时预览；安装器把曲库路径写入 `userData/install.ini`，主进程 `install-paths.ts` 读取后作为导入目标。
 - 构建修正：`electron` 移到 `devDependencies`，新增 `electron-builder@26.18.0` 与 `author`；`dist` 脚本不再硬编码 `--win portable`，目标由 `electron-builder.yml` 决定；本机直连 GitHub 不可用时用 `ELECTRON_BUILDER_BINARIES_MIRROR` 走镜像。
 
