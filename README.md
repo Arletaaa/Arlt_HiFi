@@ -4,7 +4,7 @@ Arlt-HiFi 是一款面向本地 HiFi 音乐播放体验的 Electron 桌面音乐
 
 ## 在线演示
 
-[打开网页演示](https://arletaaa.github.io/Arlt_Hifi/) — GitHub Pages 托管的是渲染层静态包，内置示例曲库，可以体验 3D 货架、搜索、开盒与唱片机交互。
+[打开网页演示](https://arletaaa.github.io/Arlt_HiFi/) — GitHub Pages 托管的是渲染层静态包，内置示例曲库，可以体验 3D 货架、搜索、开盒与唱片机交互。
 
 网页版没有主进程：导入曲库、真实音频播放和设置持久化都依赖 Electron 与本地媒体协议，这些只在[桌面版](#发布与下载)里可用。演示站由 [deploy-pages.yml](.github/workflows/deploy-pages.yml) 在推送到 `main` 时自动构建；首次部署需在仓库 Settings → Pages 把 Source 设为 "GitHub Actions"。
 
