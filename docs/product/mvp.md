@@ -1,4 +1,4 @@
-# Arlt HiFi Player v1.0 MVP 与验收标准（已取消）
+# Arlt-HiFi v1.0 MVP 与验收标准（已取消）
 
 > **已取消（2026-10-30，[ADR 007](../decisions/007-v1-scope-convergence.md)）**：本文件不再作为 v1.0 验收基线，保留作历史。当前范围是“单排 CD 货架 + CD 盒 + 唱片机 + CD 详情信息条”；队列页、播放台、收藏、长廊/Bay、列表降级等条款已取消。当前清单见 [next-steps](next-steps.md)，阶段状态见 [roadmap](roadmap.md)。
 

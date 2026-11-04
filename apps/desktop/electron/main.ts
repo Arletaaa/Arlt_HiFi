@@ -1,4 +1,5 @@
 import electron from "electron";
+import { watch, type FSWatcher } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,36 +9,47 @@ import type {
   FolderImportResult,
   LibraryImportProgress,
   LibraryImportResult,
+  LibraryRescanResult,
   Track
-} from "@arlhifi/shared";
+} from "@arlt-hifi/shared";
 import { appEntryUrl, createAppProtocolHandler, registerAppProtocolPrivileges } from "./app-protocol.js";
 import { importAudioFiles } from "./library-import.js";
-import { editLibraryTrack, removeLibraryTrack, renameLibraryTrack, setLibraryTrackCover } from "./library-manage.js";
+import { applyLibraryEdits, editLibraryTrack, removeLibraryTrack, renameLibraryTrack, setLibraryTrackCover } from "./library-manage.js";
 import { pruneMissingEntries, readLibraryManifest, writeLibraryManifest } from "./library-manifest.js";
 import { createMediaProtocolAccess, registerMediaProtocolPrivileges } from "./media-protocol.js";
 import { collectAudioFilePaths } from "./music-scanner.js";
+import { rescanLibraryEntries } from "./library-rescan.js";
 import { mergeSettings, readSettings, writeSettings } from "./settings-store.js";
 
 const { app, BrowserWindow, dialog, ipcMain, shell } = electron;
 
 // 统一 dev / start / 打包产物的 userData；dev 直接跑 main.js 时默认是 %APPDATA%\Electron。
-app.setName("Arlt HiFi Player");
+app.setName("Arlt-HiFi");
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const devServerUrl = process.env.VITE_DEV_SERVER_URL;
+// 开发期窗口/任务栏图标；打包后图标由 electron-builder 写进 exe，无需再传。
+const devWindowIcon = app.isPackaged ? null : join(currentDir, "../build/icon.png");
 const selectAudioFilesChannel = "library:select-files";
 const importAudioFilesChannel = "library:import-files";
 const importAudioFolderChannel = "library:import-folder";
+const cancelLibraryImportChannel = "library:cancel-import";
 const loadLibraryChannel = "library:load";
+const rescanLibraryChannel = "library:rescan";
 const renameTrackChannel = "library:rename-track";
 const editTrackChannel = "library:edit-track";
+const applyTrackEditsChannel = "library:apply-edits";
 const setTrackCoverChannel = "library:set-track-cover";
 const deleteTrackChannel = "library:delete-track";
 const openLibraryFolderChannel = "library:open-folder";
+const libraryChangedChannel = "library:changed";
 const libraryImportProgressChannel = "library:import-progress";
 const loadSettingsChannel = "settings:load";
 const saveSettingsChannel = "settings:save";
 const mediaProtocolAccess = createMediaProtocolAccess();
+let activeImportController: AbortController | null = null;
+let libraryWatcher: FSWatcher | null = null;
+let libraryRefreshTimer: NodeJS.Timeout | null = null;
 
 const audioDialogFilters: electron.FileFilter[] = [
   { name: "音频", extensions: ["flac", "wav", "mp3", "m4a", "ogg"] }
@@ -91,40 +103,101 @@ const loadManagedLibrary = async (): Promise<readonly Track[]> => {
   return tracks;
 };
 
+/** 外部改动了托管目录后，稍等文件操作稳定再重读清单并通知窗口。 */
+const scheduleLibraryChanged = (): void => {
+  if (activeImportController) {
+    return;
+  }
+
+  if (libraryRefreshTimer) {
+    clearTimeout(libraryRefreshTimer);
+  }
+
+  libraryRefreshTimer = setTimeout(() => {
+    libraryRefreshTimer = null;
+
+    void loadManagedLibrary()
+      .then((tracks) => {
+        for (const window of BrowserWindow.getAllWindows()) {
+          if (!window.isDestroyed()) {
+            window.webContents.send(libraryChangedChannel, tracks);
+          }
+        }
+      })
+      .catch(() => undefined);
+  }, 600);
+};
+
+const startLibraryWatcher = async (): Promise<void> => {
+  const directory = getLibraryDirectory();
+  await mkdir(directory, { recursive: true });
+
+  try {
+    libraryWatcher = watch(directory, { recursive: true }, () => {
+      scheduleLibraryChanged();
+    });
+    libraryWatcher.on("error", () => {
+      libraryWatcher?.close();
+      libraryWatcher = null;
+    });
+  } catch {
+    // 平台不支持递归监听时，仍可在切回窗口时刷新。
+  }
+};
+
 /** 复制入库并落盘 manifest；新文件立刻放行给媒体协议，不用重启。 */
 const importPaths = async (
   event: electron.IpcMainInvokeEvent,
   filePaths: readonly string[]
 ): Promise<LibraryImportResult> => {
-  const manifestPath = getLibraryManifestPath();
-  const manifest = await readLibraryManifest(manifestPath);
-  const outcome = await importAudioFiles({
-    coversDirectory: getCoversDirectory(),
-    entries: manifest.entries,
-    filePaths,
-    libraryDirectory: getLibraryDirectory(),
-    onProgress: (completed, total) => {
-      if (event.sender.isDestroyed()) {
-        return;
+  if (activeImportController) {
+    throw new Error("已有导入正在进行，请稍候。");
+  }
+
+  const controller = new AbortController();
+  activeImportController = controller;
+
+  try {
+    const manifestPath = getLibraryManifestPath();
+    const manifest = await readLibraryManifest(manifestPath);
+    const outcome = await importAudioFiles({
+      coversDirectory: getCoversDirectory(),
+      entries: manifest.entries,
+      filePaths,
+      libraryDirectory: getLibraryDirectory(),
+      signal: controller.signal,
+      onProgress: (completed, total) => {
+        if (event.sender.isDestroyed()) {
+          return;
+        }
+
+        const progress: LibraryImportProgress = { completed, total };
+
+        event.sender.send(libraryImportProgressChannel, progress);
       }
+    });
 
-      const progress: LibraryImportProgress = { completed, total };
+    await writeLibraryManifest(manifestPath, {
+      entries: [...manifest.entries, ...outcome.entries],
+      version: manifest.version
+    });
 
-      event.sender.send(libraryImportProgressChannel, progress);
+    mediaProtocolAccess.addAudioFilePaths(outcome.imported.map((track) => track.filePath));
+    mediaProtocolAccess.addImageFilePaths(
+      outcome.imported.map((track) => track.coverPath).filter((coverPath): coverPath is string => coverPath !== null)
+    );
+
+    return {
+      imported: outcome.imported,
+      interrupted: controller.signal.aborted,
+      remainingFilePaths: outcome.remainingFilePaths,
+      skipped: outcome.skipped
+    };
+  } finally {
+    if (activeImportController === controller) {
+      activeImportController = null;
     }
-  });
-
-  await writeLibraryManifest(manifestPath, {
-    entries: [...manifest.entries, ...outcome.entries],
-    version: manifest.version
-  });
-
-  mediaProtocolAccess.addAudioFilePaths(outcome.imported.map((track) => track.filePath));
-  mediaProtocolAccess.addImageFilePaths(
-    outcome.imported.map((track) => track.coverPath).filter((coverPath): coverPath is string => coverPath !== null)
-  );
-
-  return { imported: outcome.imported, skipped: outcome.skipped };
+  }
 };
 
 ipcMain.handle(selectAudioFilesChannel, async (): Promise<AudioFileSelectionResult> => {
@@ -169,7 +242,32 @@ ipcMain.handle(importAudioFolderChannel, async (event): Promise<FolderImportResu
   return { canceled: false, ...imported };
 });
 
+ipcMain.handle(cancelLibraryImportChannel, async (): Promise<boolean> => {
+  if (!activeImportController) {
+    return false;
+  }
+
+  activeImportController.abort();
+
+  return true;
+});
+
 ipcMain.handle(loadLibraryChannel, async (): Promise<readonly Track[]> => loadManagedLibrary());
+
+ipcMain.handle(rescanLibraryChannel, async (): Promise<LibraryRescanResult> => {
+  const manifestPath = getLibraryManifestPath();
+  const manifest = await readLibraryManifest(manifestPath);
+  const outcome = await rescanLibraryEntries({ entries: manifest.entries });
+
+  if (outcome.updated > 0) {
+    await writeLibraryManifest(manifestPath, { entries: outcome.entries, version: manifest.version });
+  }
+
+  const tracks = outcome.entries.map((entry) => entry.track);
+  applyMediaAccess(tracks);
+
+  return { failed: outcome.failed, tracks, updated: outcome.updated };
+});
 
 ipcMain.handle(renameTrackChannel, async (_event, rawTrackId: unknown, rawTitle: unknown): Promise<Track> => {
   if (typeof rawTrackId !== "string" || typeof rawTitle !== "string") {
@@ -232,7 +330,41 @@ ipcMain.handle(editTrackChannel, async (_event, rawTrackId: unknown, rawEdit: un
   return outcome.track;
 });
 
-ipcMain.handle(setTrackCoverChannel, async (_event, rawTrackId: unknown): Promise<Track | null> => {  if (typeof rawTrackId !== "string") {
+ipcMain.handle(applyTrackEditsChannel, async (_event, rawEdits: unknown): Promise<readonly Track[]> => {
+  if (!Array.isArray(rawEdits) || rawEdits.length === 0) {
+    throw new Error("至少需要一条曲目编辑。");
+  }
+
+  const edits = rawEdits.map((raw) => {
+    const record = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
+    const trackId = typeof record.trackId === "string" ? record.trackId : "";
+
+    if (trackId.length === 0) {
+      throw new Error("曲目 id 不能为空。");
+    }
+
+    return {
+      album: typeof record.album === "string" ? record.album : "",
+      albumArtist: typeof record.albumArtist === "string" ? record.albumArtist : "",
+      cdId: typeof record.cdId === "string" ? record.cdId : null,
+      discNumber: typeof record.discNumber === "number" ? record.discNumber : 0,
+      trackId,
+      trackNumber: typeof record.trackNumber === "number" ? record.trackNumber : 0
+    };
+  });
+
+  const manifestPath = getLibraryManifestPath();
+  const manifest = await readLibraryManifest(manifestPath);
+  const entries = applyLibraryEdits({ edits, entries: manifest.entries });
+
+  await writeLibraryManifest(manifestPath, { entries, version: manifest.version });
+  applyMediaAccess(entries.map((entry) => entry.track));
+
+  return entries.map((entry) => entry.track);
+});
+
+ipcMain.handle(setTrackCoverChannel, async (_event, rawTrackId: unknown): Promise<Track | null> => {
+  if (typeof rawTrackId !== "string") {
     throw new Error("曲目 id 不能为空。");
   }
 
@@ -318,7 +450,8 @@ const createWindow = async (): Promise<void> => {
     minWidth: 1024,
     minHeight: 680,
     backgroundColor: "#0a0d16",
-    title: "Arlt HiFi Player",
+    title: "Arlt-HiFi",
+    ...(devWindowIcon ? { icon: devWindowIcon } : {}),
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(currentDir, "preload.cjs"),
@@ -339,6 +472,7 @@ const createWindow = async (): Promise<void> => {
 app.whenReady().then(() => {
   mediaProtocolAccess.registerHandler();
   appProtocolAccess.registerHandler();
+  void startLibraryWatcher();
   void createWindow();
 
   app.on("activate", () => {
@@ -346,6 +480,16 @@ app.whenReady().then(() => {
       void createWindow();
     }
   });
+});
+
+app.on("before-quit", () => {
+  libraryWatcher?.close();
+  libraryWatcher = null;
+
+  if (libraryRefreshTimer) {
+    clearTimeout(libraryRefreshTimer);
+    libraryRefreshTimer = null;
+  }
 });
 
 app.on("window-all-closed", () => {

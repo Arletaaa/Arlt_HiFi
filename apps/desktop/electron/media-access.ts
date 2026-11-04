@@ -5,6 +5,22 @@ export type MediaKind = "audio" | "image";
 const supportedAudioExtensions = new Set([".flac", ".wav", ".mp3", ".m4a", ".ogg"]);
 const supportedImageExtensions = new Set([".png", ".jpg", ".jpeg", ".webp"]);
 
+const mediaContentTypes: Record<string, string> = {
+  ".flac": "audio/flac",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".m4a": "audio/mp4",
+  ".mp3": "audio/mpeg",
+  ".ogg": "audio/ogg",
+  ".png": "image/png",
+  ".wav": "audio/wav",
+  ".webp": "image/webp"
+};
+
+/** 自定义协议返回文件流时必须自己带 Content-Type，浏览器不会按扩展名猜。 */
+export const getMediaContentType = (filePath: string): string =>
+  mediaContentTypes[extname(filePath).toLowerCase()] ?? "application/octet-stream";
+
 export const isSupportedAudioFile = (filePath: string): boolean =>
   supportedAudioExtensions.has(extname(filePath).toLowerCase());
 

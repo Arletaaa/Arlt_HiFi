@@ -1,4 +1,4 @@
-# Arlt HiFi Player Roadmap
+# Arlt-HiFi Roadmap
 
 > 最后同步：2026-10-30。v1.0 范围已由 [ADR 007](../decisions/007-v1-scope-convergence.md) 收敛；剩余项见 [next-steps](next-steps.md)。
 
@@ -20,7 +20,7 @@
 
 ## v1.0 剩余工作
 
-- [x] **P0 门禁与打包**：`typecheck` / `test`（154）/ `build` 全绿；`ArltHiFiPlayer-0.1.0-portable.exe` 已产出并完成启动冒烟。
+- [x] **P0 门禁与打包**：`typecheck` / `test`（154）/ `build` 全绿；`arlt-hifi-0.1.0-portable.exe` 已产出并完成启动冒烟。
 - [~] **装包完整交互**：导入、播放、开盒、拖盘、落针、顺序/循环/随机、返回、重启恢复仍待真机手测。
 - [x] **CD 详情播放条**：当前曲目、进度（可 seek）、真实格式/采样率/位深/质量；不恢复旧播放栏。
 - [~] **CD 多曲管理**：自动归组/排序、逐首编辑、批量合并已完成；旧库重扫未做；不做“导入文件夹作为 CD”。

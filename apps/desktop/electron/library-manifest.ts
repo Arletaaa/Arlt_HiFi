@@ -1,6 +1,6 @@
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { Track } from "@arlhifi/shared";
+import type { Track } from "@arlt-hifi/shared";
 
 export const libraryManifestVersion = 1;
 

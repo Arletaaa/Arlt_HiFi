@@ -1,18 +1,13 @@
-import { Suspense, lazy, useState } from "react";
-import type { Track } from "@arlhifi/shared";
+import { Suspense, lazy, useEffect, useState } from "react";
+import type { Track } from "@arlt-hifi/shared";
 import type { GalleryGroup } from "../lib/album-groups";
+import { dismissBootScreen } from "../boot-screen";
 import { sceneStats, useFrameRateSample } from "./perf";
+import type { ScenePhase } from "./scene-transition";
 import { isWebGL2Available } from "./webgl";
 
 const GalleryExperience = lazy(() =>
   import("./gallery-stage").then((module) => ({ default: module.GalleryExperience }))
-);
-
-const SceneLoading = () => (
-  <div aria-live="polite" className="scene-stage__loading">
-    <span aria-hidden="true" className="scene-stage__loading-disc" />
-    <p className="scene-stage__loading-copy">Loading collection</p>
-  </div>
 );
 
 export interface SceneStageProps {
@@ -20,6 +15,7 @@ export interface SceneStageProps {
   readonly focusGroupId: string | null;
   readonly focusNonce: number;
   readonly groups: readonly GalleryGroup[];
+  readonly onPhaseChange: (phase: ScenePhase) => void;
   readonly tracks: readonly Track[];
 }
 
@@ -28,6 +24,7 @@ export const SceneStage = ({
   focusGroupId,
   focusNonce,
   groups,
+  onPhaseChange,
   tracks
 }: SceneStageProps) => {
   const [supported] = useState<boolean>(() => isWebGL2Available());
@@ -36,16 +33,24 @@ export const SceneStage = ({
   );
   const sample = useFrameRateSample();
 
+  // 没有 WebGL2 时不会再有场景首帧回调，直接撤掉启动画面露出说明文字。
+  useEffect(() => {
+    if (!supported) {
+      dismissBootScreen();
+    }
+  }, [supported]);
+
   return (
     <div className="scene-stage">
       <div className="scene-stage__viewport">
         {supported ? (
-          <Suspense fallback={<SceneLoading />}>
+          <Suspense fallback={null}>
             <GalleryExperience
               currentTrackId={currentTrackId}
               focusGroupId={focusGroupId}
               focusNonce={focusNonce}
               groups={groups}
+              onPhaseChange={onPhaseChange}
               tracks={tracks}
             />
           </Suspense>

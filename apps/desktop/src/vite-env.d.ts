@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { ArltHifiDesktopApi } from "@arlhifi/shared";
+import type { ArltHifiDesktopApi } from "@arlt-hifi/shared";
 
 declare global {
   interface Window {

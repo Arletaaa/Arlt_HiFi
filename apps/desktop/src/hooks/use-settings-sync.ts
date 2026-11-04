@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { AppSettings } from "@arlhifi/shared";
+import type { AppSettings } from "@arlt-hifi/shared";
 import { usePlayerStore } from "../store/player-store";
 import { useSettingsStore } from "../store/settings-store";
 
@@ -11,6 +11,7 @@ export const useSaveSettings = (): void => {
   const theme = useSettingsStore((state) => state.theme);
   const motionTier = useSettingsStore((state) => state.motionTier);
   const librarySort = useSettingsStore((state) => state.librarySort);
+  const cdOrder = useSettingsStore((state) => state.cdOrder);
   const scenePreset = useSettingsStore((state) => state.scenePreset);
   const hydration = useSettingsStore((state) => state.hydration);
   const volume = usePlayerStore((state) => state.volume);
@@ -25,6 +26,7 @@ export const useSaveSettings = (): void => {
     const api = window.arltHifiDesktop;
 
     const settings: AppSettings = {
+      cdOrder,
       librarySort,
       motionTier,
       playbackMode,
@@ -52,5 +54,5 @@ export const useSaveSettings = (): void => {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [hydration, librarySort, motionTier, playbackMode, scenePreset, theme, volume]);
+  }, [cdOrder, hydration, librarySort, motionTier, playbackMode, scenePreset, theme, volume]);
 };

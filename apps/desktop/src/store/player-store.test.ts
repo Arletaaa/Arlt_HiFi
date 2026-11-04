@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Track } from "@arlhifi/shared";
+import type { Track } from "@arlt-hifi/shared";
 import { createInitialPlayerState, createPlayerStore } from "./player-store";
 
 const createTrack = (id: string, title: string): Track => ({
@@ -317,6 +317,38 @@ describe("CD queue playback", () => {
 
     expect(store.getState().currentTrack).toEqual(only);
     expect(store.getState().status).toBe("playing");
+  });
+
+  it("restarts a single-track CD when next is pressed while playing", () => {
+    const store = createPlayerStore();
+    const only = createTrack("track-1", "Only");
+
+    store.getState().playTracks([only]);
+    store.getState().setPositionSeconds(4);
+
+    const nonceBefore = store.getState().seekRequest?.nonce ?? 0;
+
+    store.getState().nextTrack();
+
+    expect(store.getState().currentTrack).toEqual(only);
+    expect(store.getState().status).toBe("playing");
+    expect(store.getState().positionSeconds).toBe(0);
+    // 同一首不会换 src，必须靠 seek 请求回到开头才听得见重播。
+    expect(store.getState().seekRequest?.seconds).toBe(0);
+    expect(store.getState().seekRequest?.nonce).toBe(nonceBefore + 1);
+  });
+
+  it("restarts a single-track CD when previous is pressed before 3 seconds", () => {
+    const store = createPlayerStore();
+    const only = createTrack("track-1", "Only");
+
+    store.getState().playTracks([only]);
+    store.getState().setPositionSeconds(1);
+    store.getState().previousTrack();
+
+    expect(store.getState().currentTrack).toEqual(only);
+    expect(store.getState().positionSeconds).toBe(0);
+    expect(store.getState().seekRequest?.seconds).toBe(0);
   });
 
   it("cues a CD without starting audio", () => {

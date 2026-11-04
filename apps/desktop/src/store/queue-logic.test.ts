@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Track } from "@arlhifi/shared";
+import type { Track } from "@arlt-hifi/shared";
 import { getNextIndex, getPreviousIndex, getReplacementIndex, pruneQueueToLibrary } from "./queue-logic";
 
 const createTrack = (id: string): Track => ({

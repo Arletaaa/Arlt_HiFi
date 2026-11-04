@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useThree } from "@react-three/fiber";
 import { SRGBColorSpace, Texture, TextureLoader } from "three";
-import { createCoverMediaUrl } from "@arlhifi/shared";
+import { createCoverMediaUrl } from "@arlt-hifi/shared";
 
 const MAX_COVER_TEXTURES = 48;
 const cache = new Map<string, Texture>();

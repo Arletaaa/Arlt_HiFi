@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Track } from "@arlhifi/shared";
+import type { Track } from "@arlt-hifi/shared";
 import { groupTracksForGallery } from "./album-groups";
 
 const createTrack = (
@@ -116,5 +116,34 @@ describe("gallery grouping", () => {
     ]);
 
     expect(groups[0]?.durationSeconds).toBe(200);
+  });
+
+  it("keeps explicit single CDs apart even when their tags are identical", () => {
+    const groups = groupTracksForGallery([
+      { ...createTrack("1", "Same", "Kaze", "Same"), cdId: "solo:1" },
+      { ...createTrack("2", "Same", "Kaze", "Same"), cdId: "solo:2" },
+      createTrack("3", "Third", "Kaze", "Same")
+    ]);
+
+    expect(groups).toHaveLength(3);
+    expect(groups.find((group) => group.trackIds.includes("1"))?.trackIds).toEqual(["1"]);
+  });
+
+  it("orders CDs by the saved manual order and appends the rest", () => {
+    const tracks = [
+      createTrack("1", "A1", "Kaze", "Zeta"),
+      createTrack("2", "A2", "Kaze", "Alpha")
+    ];
+
+    expect(groupTracksForGallery(tracks, "manual", ["Kaze::Zeta", "Kaze::Alpha"]).map((group) => group.title)).toEqual([
+      "Zeta",
+      "Alpha"
+    ]);
+    expect(groupTracksForGallery(tracks, "manual", ["Kaze::Alpha"]).map((group) => group.title)).toEqual([
+      "Alpha",
+      "Zeta"
+    ]);
+    // 没有手动顺序时保持推导顺序（导入顺序），而不是退回标题排序。
+    expect(groupTracksForGallery(tracks, "manual", []).map((group) => group.title)).toEqual(["Zeta", "Alpha"]);
   });
 });

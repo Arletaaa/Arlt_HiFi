@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import type { AppSettings, PlaybackMode, Track } from "@arlhifi/shared";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { AppSettings, PlaybackMode, Track } from "@arlt-hifi/shared";
 import { createPortal } from "react-dom";
 import { SettingsOverlay } from "./components/settings-overlay";
 import { useApplyPreferences } from "./hooks/use-app-preferences";
@@ -7,6 +7,8 @@ import { useSaveSettings } from "./hooks/use-settings-sync";
 import { useAudioPlayback } from "./hooks/use-audio-playback";
 import { groupTracksForGallery } from "./lib/album-groups";
 import { filterTracks } from "./lib/library-filter";
+import { isGalleryChromeVisible } from "./scene/scene-transition";
+import type { ScenePhase } from "./scene/scene-transition";
 import { SceneStage } from "./scene/scene-stage";
 import { usePlayerStore } from "./store/player-store";
 import { useSettingsStore } from "./store/settings-store";
@@ -21,12 +23,16 @@ export const App = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeResultIndex, setActiveResultIndex] = useState(0);
   const [focusRequest, setFocusRequest] = useState<{ groupId: string; nonce: number } | null>(null);
+  const [scenePhase, setScenePhase] = useState<ScenePhase>("gallery");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchVisible = isGalleryChromeVisible(scenePhase);
 
   const library = usePlayerStore((state) => state.library);
   const currentTrackId = usePlayerStore((state) => state.currentTrack?.id ?? null);
   const loadLibrary = usePlayerStore((state) => state.loadLibrary);
   const hydrateSettings = useSettingsStore((state) => state.hydrate);
   const librarySort = useSettingsStore((state) => state.librarySort);
+  const cdOrder = useSettingsStore((state) => state.cdOrder);
 
   const searchResults = useMemo(() => {
     if (searchQuery.trim().length === 0) {
@@ -36,7 +42,10 @@ export const App = () => {
     return filterTracks(library, searchQuery).slice(0, MAX_SEARCH_RESULTS);
   }, [library, searchQuery]);
 
-  const galleryGroups = useMemo(() => groupTracksForGallery(library, librarySort), [library, librarySort]);
+  const galleryGroups = useMemo(
+    () => groupTracksForGallery(library, librarySort, cdOrder),
+    [cdOrder, library, librarySort]
+  );
 
   useSaveSettings();
 
@@ -99,6 +108,54 @@ export const App = () => {
     };
   }, [hydrateSettings, loadLibrary]);
 
+  // 切回窗口时重新读取清单：在文件管理器里删改曲目后不必重启应用。
+  useEffect(() => {
+    const api = window.arltHifiDesktop;
+
+    if (!api) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const refreshLibrary = (): void => {
+      void api.loadLibrary().then((tracks) => {
+        if (!cancelled) {
+          loadLibrary(tracks);
+        }
+      });
+    };
+
+    window.addEventListener("focus", refreshLibrary);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", refreshLibrary);
+    };
+  }, [loadLibrary]);
+
+  // 托管目录被外部删改时，主进程会推送最新清单。
+  useEffect(() => {
+    const api = window.arltHifiDesktop;
+
+    if (!api) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const unsubscribe = api.onLibraryChanged((tracks) => {
+      if (!cancelled) {
+        loadLibrary(tracks);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [loadLibrary]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       // 管理弹窗叠在设置上时，Esc 只关管理弹窗，设置保持打开。
@@ -112,6 +169,21 @@ export const App = () => {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
+  }, []);
+
+  // 进入交互区就收起搜索：清空输入并移走焦点，避免对着看不见的输入框打字。
+  useEffect(() => {
+    if (searchVisible) {
+      return;
+    }
+
+    searchInputRef.current?.blur();
+    setSearchQuery("");
+    setActiveResultIndex(0);
+  }, [searchVisible]);
+
+  const handleScenePhaseChange = useCallback((phase: ScenePhase): void => {
+    setScenePhase(phase);
   }, []);
 
   const flyToTrack = (track: Track): void => {
@@ -156,7 +228,7 @@ export const App = () => {
     }
   };
 
-  const showSearchResults = searchQuery.trim().length > 0;
+  const showSearchResults = searchVisible && searchQuery.trim().length > 0;
 
   return (
     <div className="app app--gallery">
@@ -165,10 +237,14 @@ export const App = () => {
         focusGroupId={focusRequest?.groupId ?? null}
         focusNonce={focusRequest?.nonce ?? 0}
         groups={galleryGroups}
+        onPhaseChange={handleScenePhaseChange}
         tracks={library}
       />
 
-      <div className="gallery-topbar">
+      <div
+        aria-hidden={!searchVisible}
+        className={`gallery-topbar${searchVisible ? "" : " is-hidden"}`}
+      >
         <input
           aria-activedescendant={
             searchResults.length > 0 ? `gallery-search-result-${activeResultIndex}` : undefined
@@ -184,7 +260,9 @@ export const App = () => {
           }}
           onKeyDown={handleSearchKeyDown}
           placeholder="搜索专辑 · 艺术家 · 曲目"
+          ref={searchInputRef}
           role="combobox"
+          tabIndex={searchVisible ? 0 : -1}
           type="search"
           value={searchQuery}
         />

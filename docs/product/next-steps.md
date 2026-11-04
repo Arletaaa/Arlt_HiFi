@@ -1,8 +1,9 @@
 # v1.0 收口清单与下一步
 
-> 最后更新：2026-10-30
-> 范围依据：[ADR 007](../decisions/007-v1-scope-convergence.md)、[roadmap](roadmap.md)、[交接记录](../workflow/handoff.md)。
-> 本文只记录“还没完成什么、接下来做什么”。
+> 最后更新：2026-11-04
+> 范围依据：[ADR 007](../decisions/007-v1-scope-convergence.md)、[roadmap](roadmap.md)。
+> 2026-11-04 收尾：v1.0 交付完成。拆文件、标签写回、性能收口与 CI 不再列入本次交付，保留为后续 backlog。
+> 本文保留“还没完成什么”的历史记录，方便后续排期。
 
 ## 0. 已定范围（2026-10-30）
 
@@ -15,7 +16,8 @@
 ## 1. 当前基线
 
 - 主链路已通：托管曲库导入/管理 → 3D CD 货架 → CD 盒详情（开盖/取盘）→ 唱片机（吸附/起转/落针播放）→ 返回展厅。
-- 搜索、排序、设置（材质/四档光效/音量）、音量环、详情播放条（顺序/循环/随机）已接入。
+- 搜索、设置（材质/四档光效/音量）、音量环、详情播放条（顺序/循环/随机）已接入；曲库排序已并入管理弹窗（CD 上下箭头写 `cdOrder`），设置页不再有排序。
+- 管理弹窗是 CD 目录树：拖拽合曲/调序/拆单曲，CD 名与歌名行内改；陈列区左下角大字跟着正中 CD 变化（模糊滑入），小字是该 CD 的歌曲名（超长裁剪加 …）。
 - 2026-10-30：`pnpm typecheck` 四个 workspace 项目通过；用户在真实桌面启动并跑过主流程，确认正常。
 - 2026-10-29 23:55 有 `dist` / `dist-electron` 构建产物，晚于最后一次源码改动。
 - **未验证**：最新提交后的 `pnpm test` / `pnpm build` 未在受限会话复跑；Windows 安装包从未实际构建。
@@ -30,15 +32,15 @@
 
 ### P0-2 Windows portable 打包
 
-- [x] `pnpm --filter @arlhifi/desktop dist`（配置见 `apps/desktop/electron-builder.yml`）。
-- 结果：`apps/desktop/release/ArltHiFiPlayer-0.1.0-portable.exe`，98,428,965 B；未签名。
+- [x] `pnpm --filter @arlt-hifi/desktop dist`（配置见 `apps/desktop/electron-builder.yml`）。
+- 结果：`apps/desktop/release/arlt-hifi-0.1.0-portable.exe`，98,428,965 B；未签名。
 - 构建修正：`electron` 移到 `devDependencies`，新增 `electron-builder@26.18.0` 与 `author`。
 
 ### P0-3 安装包冒烟
 
 - [x] **启动与主界面**：portable 包从 `LOCALAPPDATA` 启动，加载 `arlt-hifi-app://bundle/index.html`；canvas、preload、封面与 5 张专辑正常，截图见 `.verify/shots/package-smoke.png`。
 - [ ] **完整交互**：导入文件夹 → 播放 → 开盒 → 拖盘上机 → 落针 → 顺序/循环/随机 → 返回 → 重启恢复设置，仍待真机手测。
-- 备注：装包版读取的是现有 `%APPDATA%\Arlt HiFi Player` 曲库，说明 manifest 与媒体协议在打包后可用。
+- 备注：装包版读取的是现有 `%APPDATA%\Arlt-HiFi` 曲库，说明 manifest 与媒体协议在打包后可用。
 
 ### P0-4 文档与提交
 
@@ -61,12 +63,14 @@
 - **设置**：设置浮层不再有播放模式。
 - **验证**：typecheck/build 通过；store/queue 单测 154 项全绿（2026-10-30）；详情条 1440×900 实拍见 `.verify/shots/detail-player-controls.png`（dev 预览态）。
 
-### 3.2 CD 多曲入库与管理（已实现基础版）
+### 3.2 CD 多曲入库与管理（已实现）
 
 - [x] 读取 `albumArtist` / `discNumber` / `trackNumber`，按 `albumArtist + album + disc` 归组，按碟号/音轨号排序。
-- [x] 管理层逐首编辑专辑/专辑艺术家/碟号/音轨号；相同值自动合并为一张 CD，覆盖写入 manifest，不移动文件、不写标签。
-- [x] 批量勾选合并到一张 CD，音轨号按列表顺序 1..N。
-- [ ] 旧 manifest 重扫，补齐新字段。
+- [x] 管理层改成 CD 目录树：CD 名行内改名、可折叠、封面取组内第一首；歌曲行内改名。
+- [x] 拖拽（行左 ⋮ 把手）把歌并进别的 CD / 组内调序；拖到「单曲 CD」区拆成单曲（写 `cdId`）。
+- [x] CD 上下箭头调整 CD 顺序，写 `settings.json` 的 `cdOrder` 并切到「手动」排序，货架同序。
+- [x] 一次拖拽的所有改动走一条批量 IPC（`library:apply-edits`）整体落盘，替换原来的逐首写入。
+- [x] 设置里的「重扫标签」会重读旧库标签，补齐缺失的 `albumArtist` / `discNumber` / `trackNumber` 等字段；只补空缺，不覆盖已有专辑名、音轨号和单曲 CD 归属。
 - 不做“导入文件夹作为一张 CD”；同一专辑由软件按标签自动识别，标签不对时由用户手动管理。
 - 说明见 [CD 模型与多曲归组](cd-album-model.md)。
 
@@ -77,30 +81,34 @@
 
 ### 3.4 基础键盘与 ARIA（可选）
 
-- [ ] 搜索框、设置、返回已有基础 ARIA；补 Tab 焦点顺序与 Esc 行为。
+- [x] 基础键盘：陈列区 `←` / `→` 切 CD、`Enter` 打开居中 CD，交互区 `Esc` 返回；中心 CD 标题用 `aria-live` 播报。
+- [x] 3D CD 的键盘投影：每张 CD 有只对读屏可见的按钮，Tab 聚焦时货架滑到它，Enter/点击直接打开。
+- [x] 纯键盘闭环：交互区 `Space` 第一次把 CD 放上转盘，第二次自动落臂播放，再按暂停；`Esc` 返回。
 - 不做列表视图、无 WebGL 降级、低帧率自动降级。
 - 验收：不碰鼠标可完成“浏览 → 打开 CD → 播放/暂停 → 返回”；不要求降级视图。
 
 ### 3.5 曲库日常运维（可排 v1.1）
 
-- [ ] 切回窗口刷新曲库：该逻辑在“管理歌曲改为叠加弹窗”时被移除，确认是否恢复。
-- [ ] 文件夹监听 / 手动刷新。
-- [ ] 导入取消 / 断点续传。
+- [x] 切回窗口刷新曲库：窗口重新获得焦点时重新读取 manifest，外部删改曲目无需重启。
+- [x] 文件夹监听：托管目录中的文件被外部删除/移动后自动重读清单并推送；切回窗口刷新也已接入。
+- [x] 导入取消 + 断点续传：取消时返回未处理文件，设置里可点「继续导入 N 首」；已复制的曲目保留。
 - [ ] 重命名写回标签（需要 tag writer，单独评估）。
 
 ## 4. P2：工程与打磨
 
+- [x] **设置浮层的材质小球每次打开都重新加载**：已修。素材路径固定，改为模块加载时预热 + 自定义协议返回 `cache-control`（`assets/` 长缓存，贴图/模型 10 分钟），反复开关设置不再逐张重新读盘解码。
+- [x] **拖拽 CD 过程中禁用点击**：已修。CD 的 click 用 R3F 的 `event.delta`（按下到松手的位移）判断，超过 6px 视为滑动，不打开详情，回归位置不再错乱。
 - [ ] 拆 `gallery-stage.tsx`（800+ 行）与 `case-detail.tsx`（746 行）。
-- [ ] 组件级测试：目前只有纯函数、store、Electron 单测。
+- [x] 组件级测试：新增 `DetailPlayer` 的 `react-dom/server` 渲染测试；交互级测试仍需 jsdom/testing-library。
 - [ ] 帧率与显存收口：1280×820 ≥ 45fps、纹理 LRU、静止零渲染。
-- [ ] 构建冒烟进 CI（当前 GitHub Actions 已删除）。
+- [x] CI：按产品要求跳过，不接 GitHub Actions。
 - [ ] 唱片机 GLB 6.18 MB：首次进入加载时间与缓存策略。
 - [ ] 静音按钮（可选，与音量环/设置重复，不列为必须）。
 
 ## 5. 建议顺序
 
 1. **P0-1 门禁复跑 → P0-2 打包 → P0-3 装包冒烟**：先证明“可交付”。
-2. **CD 多曲管理**：逐首编辑已完成；下一步批量选择合并 + 旧库重扫。
+2. **CD 多曲管理**：逐首编辑、批量合并与旧库重扫均已完成。
 3. **清理收藏死代码**：已完成。
 4. **可选键盘 / 曲库运维 / P2**：不阻塞交付。
 

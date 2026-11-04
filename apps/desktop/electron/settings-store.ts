@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { defaultAppSettings, defaultScenePreset, type AppSettings, type LibrarySortKey, type MotionTier, type PlaybackMode, type ScenePreset, type ThemeMode } from "@arlhifi/shared";
+import { defaultAppSettings, defaultScenePreset, type AppSettings, type LibrarySortKey, type MotionTier, type PlaybackMode, type ScenePreset, type ThemeMode } from "@arlt-hifi/shared";
 
 const settingsFileName = "settings.json";
 
@@ -15,7 +15,37 @@ const isMotionTier = (value: unknown): value is MotionTier =>
   value === "off" || value === "standard" || value === "rich";
 
 const isLibrarySortKey = (value: unknown): value is LibrarySortKey =>
-  value === "title" || value === "artist" || value === "duration" || value === "imported";
+  value === "manual" || value === "title" || value === "artist" || value === "duration" || value === "imported";
+
+const readCdOrder = (raw: unknown): readonly string[] => {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const order: string[] = [];
+
+  for (const entry of raw) {
+    if (typeof entry !== "string") {
+      continue;
+    }
+
+    const id = entry.trim();
+
+    if (id.length === 0 || id.length > 240 || seen.has(id)) {
+      continue;
+    }
+
+    seen.add(id);
+    order.push(id);
+
+    if (order.length >= 2000) {
+      break;
+    }
+  }
+
+  return order;
+};
 
 const isPlaybackMode = (value: unknown): value is PlaybackMode =>
   value === "sequential" || value === "loop" || value === "shuffle";
@@ -59,6 +89,7 @@ export const mergeSettings = (raw: unknown): AppSettings => {
   const record = raw as Record<string, unknown>;
 
   return {
+    cdOrder: readCdOrder(record.cdOrder),
     librarySort: isLibrarySortKey(record.librarySort) ? record.librarySort : defaultAppSettings.librarySort,
     motionTier: isMotionTier(record.motionTier) ? record.motionTier : defaultAppSettings.motionTier,
     playbackMode: normalizePlaybackMode(record.playbackMode),

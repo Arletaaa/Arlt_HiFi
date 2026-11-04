@@ -1,4 +1,4 @@
-import { defaultAppSettings, getAudioQuality, type ArltHifiDesktopApi, type Track } from "@arlhifi/shared";
+import { defaultAppSettings, getAudioQuality, type ArltHifiDesktopApi, type Track } from "@arlt-hifi/shared";
 import { isLightPresetId } from "../lib/light-presets";
 import { usePlayerStore } from "../store/player-store";
 import { useSettingsStore } from "../store/settings-store";
@@ -60,12 +60,16 @@ const createDemoApi = (): ArltHifiDesktopApi => ({
   selectAudioFiles: rejectWebPreviewImport,
   importAudioFiles: rejectWebPreviewImport,
   importAudioFolder: rejectWebPreviewImport,
+  cancelLibraryImport: async () => false,
   loadLibrary: async () => demoTracks,
+  rescanLibrary: rejectWebPreviewManage,
   renameTrack: rejectWebPreviewManage,
   editTrack: rejectWebPreviewManage,
+  applyTrackEdits: rejectWebPreviewManage,
   setTrackCover: rejectWebPreviewManage,
   deleteTrack: rejectWebPreviewManage,
   openLibraryFolder: rejectWebPreviewManage,
+  onLibraryChanged: () => () => {},
   onLibraryImportProgress: () => () => {},
   loadSettings: async () => ({ ...defaultAppSettings }),
   saveSettings: async (settings) => settings

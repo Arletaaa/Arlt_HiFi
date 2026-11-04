@@ -13,8 +13,19 @@ import {
   caseStartPosition,
   closeFrame,
   enterCasePose,
+  isGalleryChromeVisible,
   returnCasePose
 } from "./scene-transition";
+
+describe("isGalleryChromeVisible", () => {
+  it("keeps the search bar out of the interaction area", () => {
+    expect(isGalleryChromeVisible("gallery")).toBe(true);
+    expect(isGalleryChromeVisible("entering")).toBe(false);
+    expect(isGalleryChromeVisible("detail")).toBe(false);
+    expect(isGalleryChromeVisible("closing")).toBe(false);
+    expect(isGalleryChromeVisible("returning")).toBe(false);
+  });
+});
 
 describe("cameraPose", () => {
   it("starts at the gallery camera and ends at the interaction camera", () => {

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { copyFile, mkdir, open, stat } from "node:fs/promises";
 import { dirname, extname, join, parse } from "node:path";
-import type { ImportSkippedFile, Track } from "@arlhifi/shared";
+import type { ImportSkippedFile, Track } from "@arlt-hifi/shared";
 import type { LibraryEntry } from "./library-manifest.js";
 import { cacheCover, createTrackFromFilePath, isSupportedAudioFile, parseAudioFile, type ParsedAudio, toTrack } from "./music-scanner.js";
 
@@ -108,12 +108,16 @@ export interface ImportAudioFilesOptions {
   readonly importedAt?: () => string;
   readonly libraryDirectory: string;
   readonly onProgress?: (completed: number, total: number) => void;
+  /** 取消信号：只在文件之间检查，已复制的文件不会回滚。 */
+  readonly signal?: AbortSignal;
 }
 
 export interface ImportAudioFilesOutcome {
   /** 本次新增的库条目（与 `imported` 一一对应）。 */
   readonly entries: readonly LibraryEntry[];
   readonly imported: readonly Track[];
+  /** 取消后尚未处理的文件；正常完成时为空。 */
+  readonly remainingFilePaths: readonly string[];
   readonly skipped: readonly ImportSkippedFile[];
 }
 
@@ -160,10 +164,22 @@ export const importAudioFiles = async (options: ImportAudioFilesOptions): Promis
     }
   };
 
+  let processed = 0;
+
   for (const [index, filePath] of options.filePaths.entries()) {
+    if (options.signal?.aborted) {
+      break;
+    }
+
     await importOne(filePath);
-    options.onProgress?.(index + 1, total);
+    processed = index + 1;
+    options.onProgress?.(processed, total);
   }
 
-  return { entries: entries.slice(options.entries.length), imported, skipped };
+  return {
+    entries: entries.slice(options.entries.length),
+    imported,
+    remainingFilePaths: options.filePaths.slice(processed),
+    skipped
+  };
 };

@@ -1,6 +1,6 @@
-# Arlt HiFi Player
+# Arlt-HiFi
 
-Arlt HiFi Player 是一款面向本地 HiFi 音乐播放体验的 Electron 桌面音乐播放器。曲库由软件托管（导入即复制），空间化为一条可横向滑动的 3D CD 货架：每张 CD 对应一张专辑，点击进入 CD 盒详情，搜索可直接飞到目标 CD；详情右侧的唱片机可以放盘、起转、落针播放。
+Arlt-HiFi 是一款面向本地 HiFi 音乐播放体验的 Electron 桌面音乐播放器。曲库由软件托管（导入即复制），空间化为一条可横向滑动的 3D CD 货架：每张 CD 对应一张专辑，点击进入 CD 盒详情，搜索可直接飞到目标 CD；详情右侧的唱片机可以放盘、起转、落针播放。
 
 ## 产品方向
 
@@ -46,7 +46,7 @@ pnpm dev:web
 
 ## 当前进度
 
-v1.0 的主链路已经跑通，范围已由 [ADR 007](docs/decisions/007-v1-scope-convergence.md) 收敛为“单排 CD 货架 + CD 盒 + 唱片机 + CD 详情信息条”；收藏、长廊/Bay、列表降级不在 v1.0。剩余交付项见 [docs/product/next-steps.md](docs/product/next-steps.md)，阶段状态见 [roadmap](docs/product/roadmap.md)，最近一次交接见 [handoff](docs/workflow/handoff.md)。
+v1.0 已收尾：单排 CD 货架 + CD 盒 + 唱片机 + CD 详情信息条、搜索/进度/键盘、曲库导入与管理、标签补齐、导入取消/续传、媒体 seek 均已完成；desktop 171 项 + shared 11 项测试通过。收藏、长廊/Bay、列表降级不在 v1.0；后续拆文件、性能收口与标签写回不列入本次交付。[收尾清单](docs/product/next-steps.md)、[roadmap](docs/product/roadmap.md)。
 
 ## 质量检查
 
@@ -54,20 +54,21 @@ v1.0 的主链路已经跑通，范围已由 [ADR 007](docs/decisions/007-v1-sco
 pnpm typecheck
 pnpm test
 pnpm build
-pnpm --filter @arlhifi/desktop dist  # Windows portable 安装包
+pnpm --filter @arlt-hifi/desktop dist  # Windows portable 安装包
+pnpm --filter @arlt-hifi/desktop dist:offline  # 无签名/无网络时快速出包
 ```
 
-`dist` 产物在 `apps/desktop/release/ArltHiFiPlayer-<version>-portable.exe`，当前未签名。
+`dist` 产物在 `apps/desktop/release/arlt-hifi-<version>-portable.exe`，当前未签名。`dist:offline` 会跳过 EXE 图标/版本编辑与签名，只用于本地冒烟。
+
+如果项目目录受 DSH 的 Windows 权限限制，**不要直接从 `release/` 双击 portable**：启动器会被 ACL 拦住而无反应。先把 exe 复制到桌面或 `%LOCALAPPDATA%` 再运行。
 
 ## 工作区结构
 
 - `apps/desktop`：Electron + React 桌面应用（渲染层、`src/scene/` 场景层、主进程）
 - `packages/shared`：共享类型、工具函数与格式化
 - `packages/ui`：设计 token 与基础 UI 组件
-- `packages/agent-harness`：任务模板和工程约束
 - `docs/product`：产品愿景、MVP、场景规格与路线图
 - `docs/decisions`：架构决策记录（ADR）
-- `docs/workflow`：交接记录与阶段验收
 - `fixtures/audio`：音频测试样本占位说明
 - `fixtures/visuals`：视觉资源占位说明
 

@@ -164,6 +164,8 @@ export const CaseDetail = ({ bridge, coverPath, onClosed, phase, slotX, startedA
     const label = new Mesh(geometry, material);
     label.name = "cd-label";
     label.rotation.x = -Math.PI / 2;
+    // 环面 UV 比封面多转了 90°：绕盘面法线顺时针转回来，盘面贴纸才和封面同向。
+    label.rotation.z = -Math.PI / 2;
     label.position.y = 0.01;
     built.cd.add(label);
 
@@ -242,6 +244,29 @@ export const CaseDetail = ({ bridge, coverPath, onClosed, phase, slotX, startedA
     drag.current.mode = "none";
     bridge.cdSeated = true;
   };
+
+  /** 纯键盘路径：跳过拖拽，直接把盒中的 CD 吸附到转盘。 */
+  useEffect(() => {
+    if (phase !== "detail") {
+      bridge.placeDiscOnPlatter = null;
+      return;
+    }
+
+    bridge.placeDiscOnPlatter = () => {
+      if (discOnDeck.current || !built.discPivot) {
+        return;
+      }
+
+      lidAngle.current = Math.PI;
+      discOut.current = true;
+      seatDisc();
+      discOffset.current.set(0, 0, 0);
+    };
+
+    return () => {
+      bridge.placeDiscOnPlatter = null;
+    };
+  }, [bridge, phase, seatDisc]);
 
   /**
    * 点击/按住唱盘上的 CD：按吸附动画的倒放抬起、转正，停在唱片机前方。

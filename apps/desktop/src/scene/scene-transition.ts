@@ -5,6 +5,9 @@ export type ScenePhase = "gallery" | "entering" | "detail" | "closing" | "return
 /** 只有进入交互区之后才存在的阶段。 */
 export type CasePhase = Exclude<ScenePhase, "gallery">;
 
+/** 搜索框等陈列区专属界面：只在真正回到陈列区时显示，交互区与转场中隐藏。 */
+export const isGalleryChromeVisible = (phase: ScenePhase): boolean => phase === "gallery";
+
 export const GALLERY_CAMERA: readonly [number, number, number] = [0, 1.78, 3.95];
 export const GALLERY_LOOK: readonly [number, number, number] = [0, 1.30, 0];
 export const DETAIL_CAMERA: readonly [number, number, number] = [0, 2.15, 7.0];

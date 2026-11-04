@@ -199,6 +199,76 @@ describe("importing audio files", () => {
     expect(entry.importedAt).toBe("2026-10-27T00:00:00.000Z");
   });
 
+  it("stops between files when the import is cancelled", async () => {
+    const root = await createTempDirectory();
+    const source = join(root, "source");
+    const library = join(root, "library");
+    const firstFile = join(source, "First.wav");
+    const secondFile = join(source, "Second.wav");
+
+    await mkdir(source, { recursive: true });
+    await writeSilentWav(firstFile, 1);
+    await writeSilentWav(secondFile, 2);
+
+    const controller = new AbortController();
+    const progress: string[] = [];
+    const outcome = await importAudioFiles({
+      coversDirectory: null,
+      entries: [],
+      filePaths: [firstFile, secondFile],
+      libraryDirectory: library,
+      onProgress: (completed, total) => {
+        progress.push(`${completed}/${total}`);
+
+        if (completed === 1) {
+          controller.abort();
+        }
+      },
+      signal: controller.signal
+    });
+
+    expect(outcome.imported).toHaveLength(1);
+    expect(outcome.remainingFilePaths).toEqual([secondFile]);
+    expect(progress).toEqual(["1/2"]);
+    await expect(stat(join(library, "Unknown Artist", "Unknown Album", "Second.wav"))).rejects.toBeTruthy();
+
+    // 继续导入未处理文件：已导入的首个文件不会被重复复制。
+    const resumed = await importAudioFiles({
+      coversDirectory: null,
+      entries: outcome.entries,
+      filePaths: outcome.remainingFilePaths,
+      libraryDirectory: library
+    });
+
+    expect(resumed.imported).toHaveLength(1);
+    expect(resumed.remainingFilePaths).toEqual([]);
+  });
+
+  it("imports nothing when cancelled before the first file", async () => {
+    const root = await createTempDirectory();
+    const source = join(root, "source");
+    const library = join(root, "library");
+    const sourceFile = join(source, "First.wav");
+    const controller = new AbortController();
+
+    await mkdir(source, { recursive: true });
+    await writeSilentWav(sourceFile, 1);
+    controller.abort();
+
+    const outcome = await importAudioFiles({
+      coversDirectory: null,
+      entries: [],
+      filePaths: [sourceFile],
+      libraryDirectory: library,
+      signal: controller.signal
+    });
+
+    expect(outcome.entries).toEqual([]);
+    expect(outcome.imported).toEqual([]);
+    expect(outcome.remainingFilePaths).toEqual([sourceFile]);
+    await expect(stat(join(library, "Unknown Artist", "Unknown Album", "First.wav"))).rejects.toBeTruthy();
+  });
+
   it("skips duplicates even when the file name changed", async () => {
     const root = await createTempDirectory();
     const source = join(root, "source");

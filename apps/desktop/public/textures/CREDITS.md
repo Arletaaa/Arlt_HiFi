@@ -5,6 +5,9 @@
 纹理统一按 `textures/<类别>/<材质 id>-{color,normal,roughness}.jpg` 存放：
 颜色贴图最长边 2048、法线与粗糙度 1024，JPEG 渐进式，总计约 8.9 MB。
 
+设置面板的材质球使用 `textures/swatches/<材质 id>.jpg`：由对应 `-color.jpg`
+中心裁切后缩放到 192×192（quality 85），来源与许可同上，仅作预览，不参与 3D 渲染。
+
 ## 纹理（全部 ambientCG，CC0，无需署名）
 
 | 类别 | 材质 id | 原始素材 |

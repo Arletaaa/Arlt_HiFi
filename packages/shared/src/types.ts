@@ -17,8 +17,8 @@ export type ThemeMode = "dark" | "light";
 
 export type MotionTier = "off" | "standard" | "rich";
 
-/** 曲库排序：标题 / 艺术家 / 时长 / 导入顺序（manifest 顺序）。 */
-export type LibrarySortKey = "title" | "artist" | "duration" | "imported";
+/** 曲库排序：手动（cdOrder）/ 标题 / 艺术家 / 时长 / 导入顺序（manifest 顺序）。 */
+export type LibrarySortKey = "manual" | "title" | "artist" | "duration" | "imported";
 
 export interface Track {
   readonly id: string;
@@ -31,6 +31,11 @@ export interface Track {
   readonly trackNumber?: number | undefined;
   /** 碟号；多碟专辑按碟拆成多张 CD，缺失时为 0。 */
   readonly discNumber?: number | undefined;
+  /**
+   * 显式 CD 归属。只有“单曲 CD”（从专辑里拖出去的歌）需要它；
+   * 有值时归组优先用它，没值时按标签推导。只写 manifest，不写音频标签。
+   */
+  readonly cdId?: string | undefined;
   readonly durationSeconds: number;
   readonly quality: AudioQuality;
   readonly sampleRateHz: number;
@@ -74,6 +79,8 @@ export const defaultScenePreset: ScenePreset = {
 };
 
 export interface AppSettings {
+  /** CD 的手动顺序（GalleryGroup id 列表）；仅 librarySort === "manual" 时生效。 */
+  readonly cdOrder: readonly string[];
   readonly librarySort: LibrarySortKey;
   readonly motionTier: MotionTier;
   readonly playbackMode: PlaybackMode;
@@ -83,6 +90,7 @@ export interface AppSettings {
 }
 
 export const defaultAppSettings: AppSettings = {
+  cdOrder: [],
   librarySort: "title",
   motionTier: "standard",
   playbackMode: "sequential",

@@ -12,7 +12,7 @@ import {
   Vector3
 } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import type { Track } from "@arlhifi/shared";
+import type { Track } from "@arlt-hifi/shared";
 import { usePlayerStore } from "../store/player-store";
 import type { CasePhase } from "./scene-transition";
 import {
@@ -235,13 +235,36 @@ export const Turntable = ({ bridge, onTransportChange, phase, tracks }: Turntabl
     requestPause();
   }, [requestPause, requestPlay]);
 
+  /** 详情条播放键：直接落臂 + 起转，不要求用户先去拖唱臂。 */
+  const playFromDetail = useCallback(() => {
+    if (phaseRef.current !== "detail" || !cdSeatedRef.current) {
+      return;
+    }
+
+    pressRef.current = 1;
+
+    if (usePlayerStore.getState().status === "playing") {
+      setMotorOn(false);
+      requestPause();
+      return;
+    }
+
+    setDraggingArm(false);
+    setMotorOn(true);
+    setArmDown(true);
+    armTargetRef.current = ARM_PLAY_ANGLE;
+    requestPlay();
+  }, [requestPause, requestPlay]);
+
   useEffect(() => {
     bridge.toggleStartStop = toggleStartStop;
+    bridge.playFromDetail = playFromDetail;
 
     return () => {
       bridge.toggleStartStop = null;
+      bridge.playFromDetail = null;
     };
-  }, [bridge, toggleStartStop]);
+  }, [bridge, playFromDetail, toggleStartStop]);
 
   /** 离开 detail：直接停转、唱臂回架、音频暂停。 */
   useEffect(() => {

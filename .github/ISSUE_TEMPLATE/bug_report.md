@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: 报告 Arlt HiFi Player 的问题
+about: 报告 Arlt-HiFi 的问题
 title: "[Bug]: "
 labels: bug
 assignees: ""

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useLibraryImport } from "../hooks/use-library-import";
-import { getDesktopErrorMessage } from "../lib/desktop-error";
-import { librarySortOptions } from "../lib/library-filter";
+import { useLibraryRescan } from "../hooks/use-library-rescan";
 import { usePlayerStore } from "../store/player-store";
 import { useSettingsStore } from "../store/settings-store";
 import { ManageOverlay } from "./manage-overlay";
@@ -13,24 +12,24 @@ interface Swatch {
 }
 
 const TABLE_SWATCHES: readonly Swatch[] = [
-  { id: "wood029", image: "/textures/table/wood029-color.jpg", base: "#6b4f34" },
-  { id: "wood066", image: "/textures/table/wood066-color.jpg", base: "#8a5a35" },
-  { id: "wood069", image: "/textures/table/wood069-color.jpg", base: "#5a4030" },
-  { id: "wood095", image: "/textures/table/wood095-color.jpg", base: "#3f2f26" }
+  { id: "wood029", image: "/textures/swatches/wood029.jpg", base: "#6b4f34" },
+  { id: "wood066", image: "/textures/swatches/wood066.jpg", base: "#8a5a35" },
+  { id: "wood069", image: "/textures/swatches/wood069.jpg", base: "#5a4030" },
+  { id: "wood095", image: "/textures/swatches/wood095.jpg", base: "#3f2f26" }
 ];
 
 const BASE_SWATCHES: readonly Swatch[] = [
-  { id: "wood002", image: "/textures/base/wood002-color.jpg", base: "#4a3324" },
-  { id: "wood007", image: "/textures/base/wood007-color.jpg", base: "#6b4f34" },
-  { id: "wood092", image: "/textures/base/wood092-color.jpg", base: "#2f3a2f" },
-  { id: "wood096", image: "/textures/base/wood096-color.jpg", base: "#2a2b30" }
+  { id: "wood002", image: "/textures/swatches/wood002.jpg", base: "#4a3324" },
+  { id: "wood007", image: "/textures/swatches/wood007.jpg", base: "#6b4f34" },
+  { id: "wood092", image: "/textures/swatches/wood092.jpg", base: "#2f3a2f" },
+  { id: "wood096", image: "/textures/swatches/wood096.jpg", base: "#2a2b30" }
 ];
 
 const WALL_SWATCHES: readonly Swatch[] = [
-  { id: "fabric009", image: "/textures/wall/fabric009-color.jpg", base: "#5d2b2b" },
-  { id: "fabric048", image: "/textures/wall/fabric048-color.jpg", base: "#8a8378" },
-  { id: "leather012", image: "/textures/wall/leather012-color.jpg", base: "#4a3b33" },
-  { id: "woodsiding009", image: "/textures/wall/woodsiding009-color.jpg", base: "#6b6152" }
+  { id: "fabric009", image: "/textures/swatches/fabric009.jpg", base: "#5d2b2b" },
+  { id: "fabric048", image: "/textures/swatches/fabric048.jpg", base: "#8a8378" },
+  { id: "leather012", image: "/textures/swatches/leather012.jpg", base: "#4a3b33" },
+  { id: "woodsiding009", image: "/textures/swatches/woodsiding009.jpg", base: "#6b6152" }
 ];
 
 const LIGHT_SWATCHES: readonly Swatch[] = [
@@ -39,6 +38,23 @@ const LIGHT_SWATCHES: readonly Swatch[] = [
   { id: "spot", base: "#fff4e2" },
   { id: "starry", base: "#26346a" }
 ];
+
+/**
+ * 材质球用的是 192² 缩略图（12 张共约 70KB），不是 2048 的场景贴图：
+ * 打开设置前就在后台解码好，球不会一张张刷出来。
+ */
+if (typeof window !== "undefined") {
+  const images = [...TABLE_SWATCHES, ...BASE_SWATCHES, ...WALL_SWATCHES]
+    .map((swatch) => swatch.image)
+    .filter((image): image is string => Boolean(image));
+
+  for (const image of images) {
+    const warm = new Image();
+    warm.decoding = "async";
+    warm.src = image;
+    void warm.decode().catch(() => undefined);
+  }
+}
 
 interface GroupProps {
   readonly items: readonly Swatch[];
@@ -86,30 +102,22 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
   const library = usePlayerStore((state) => state.library);
   const scenePreset = useSettingsStore((state) => state.scenePreset);
   const setScenePreset = useSettingsStore((state) => state.setScenePreset);
-  const librarySort = useSettingsStore((state) => state.librarySort);
-  const setLibrarySort = useSettingsStore((state) => state.setLibrarySort);
-  const { busy, importFiles, importFolder, state: importState } = useLibraryImport();
-  const [actionError, setActionError] = useState<string | null>(null);
+  const {
+    busy: importBusy,
+    cancelImport,
+    continueImport,
+    importFiles,
+    importFolder,
+    state: importState
+  } = useLibraryImport();
+  const { busy: rescanBusy, rescan, state: rescanState } = useLibraryRescan();
   const [manageOpen, setManageOpen] = useState(false);
-  const progressLabel = importState.progress
-    ? `正在导入 ${importState.progress.completed}/${importState.progress.total}`
-    : "正在导入…";
-
-  const openLibraryFolder = async (): Promise<void> => {
-    const api = window.arltHifiDesktop;
-
-    if (!api) {
-      setActionError("网页预览没有音频目录，请使用 Electron 桌面应用。");
-      return;
-    }
-
-    try {
-      await api.openLibraryFolder();
-      setActionError(null);
-    } catch (caught) {
-      setActionError(getDesktopErrorMessage(caught));
-    }
-  };
+  const busy = importBusy || rescanBusy;
+  const progressLabel = importBusy
+    ? importState.progress
+      ? `正在导入 ${importState.progress.completed}/${importState.progress.total}`
+      : "正在导入…"
+    : "正在重扫标签…";
 
   return (
     <>
@@ -130,11 +138,27 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
             <button className="library-import__button" disabled={busy} onClick={importFolder} type="button">
               导入文件夹
             </button>
+            {importBusy ? (
+              <button className="library-import__button" onClick={cancelImport} type="button">
+                取消导入
+              </button>
+            ) : null}
+            {!busy && importState.remaining && importState.remaining.length > 0 ? (
+              <button className="library-import__button" onClick={continueImport} type="button">
+                继续导入 {importState.remaining.length} 首
+              </button>
+            ) : null}
             <button className="library-import__button" onClick={() => { setManageOpen(true); }} type="button">
               管理歌曲
             </button>
-            <button className="library-import__button" onClick={() => void openLibraryFolder()} type="button">
-              打开音频文件夹
+            <button
+              className="library-import__button"
+              disabled={busy}
+              onClick={rescan}
+              title="重读旧库标签，只补空缺字段，不覆盖已修改的值"
+              type="button"
+            >
+              重扫标签
             </button>
             {busy ? (
               <span aria-live="polite" className="library-import__status">
@@ -150,30 +174,14 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
               {importState.message}
             </p>
           ) : null}
-          {actionError ? (
-            <p className="library-import__status is-error" role="alert">
-              {actionError}
+          {!busy && rescanState.message ? (
+            <p
+              className={`library-import__status${rescanState.phase === "error" ? " is-error" : ""}`}
+              role="status"
+            >
+              {rescanState.message}
             </p>
           ) : null}
-
-          <div className="library-sort">
-            <p className="preset-group__label">排序</p>
-            <div className="library-sort__options" role="group" aria-label="曲库排序">
-              {librarySortOptions.map((option) => (
-                <button
-                  aria-pressed={option.value === librarySort}
-                  className={`library-sort__option${option.value === librarySort ? " is-active" : ""}`}
-                  key={option.value}
-                  onClick={() => {
-                    setLibrarySort(option.value);
-                  }}
-                  type="button"
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
         </section>
 
       <div className="preset-pair">

@@ -117,6 +117,10 @@ export interface TurntableBridge {
   spinAngle: number;
   /** 由 Turntable 注册：详情播放条的播放键与唱片机 Start/Stop 走同一段逻辑。 */
   toggleStartStop: (() => void) | null;
+  /** 详情条专用：未播放时自动落臂并起转，播放中则暂停。 */
+  playFromDetail: (() => void) | null;
+  /** 键盘专用：把盒中的 CD 直接放上转盘。 */
+  placeDiscOnPlatter: (() => void) | null;
 }
 
 export const createTurntableBridge = (): TurntableBridge => ({
@@ -126,5 +130,7 @@ export const createTurntableBridge = (): TurntableBridge => ({
   armDown: false,
   spinning: false,
   spinAngle: 0,
-  toggleStartStop: null
+  toggleStartStop: null,
+  playFromDetail: null,
+  placeDiscOnPlatter: null
 });

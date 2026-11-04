@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: 为 Arlt HiFi Player 提议一个新功能
+about: 为 Arlt-HiFi 提议一个新功能
 title: "[Feature]: "
 labels: enhancement
 assignees: ""

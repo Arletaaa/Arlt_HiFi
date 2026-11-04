@@ -2,8 +2,8 @@ import { mkdir, mkdtemp, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { Track } from "@arlhifi/shared";
-import { editLibraryTrack, removeLibraryTrack, renameLibraryTrack, setLibraryTrackCover } from "./library-manage.js";
+import type { Track } from "@arlt-hifi/shared";
+import { editLibraryTrack, applyLibraryEdits, removeLibraryTrack, renameLibraryTrack, setLibraryTrackCover } from "./library-manage.js";
 import type { LibraryEntry } from "./library-manifest.js";
 
 const tempDirectories: string[] = [];
@@ -231,6 +231,134 @@ describe("setting track covers", () => {
         trackId: `file://${libraryFile}`
       })
     ).rejects.toThrow("只支持 png / jpg / jpeg / webp 图片。");
+  });
+});
+
+describe("applying library edits in one pass", () => {
+  it("writes album, album artist and track order for several tracks without touching files", () => {
+    const first = createTrack("C:\\music\\A.flac");
+    const second = createTrack("C:\\music\\B.flac");
+    const entries = [createEntry(first), createEntry(second)];
+
+    const next = applyLibraryEdits({
+      edits: [
+        {
+          album: "Merged",
+          albumArtist: "Various Artists",
+          cdId: null,
+          discNumber: 0,
+          trackId: first.id,
+          trackNumber: 2
+        },
+        {
+          album: "Merged",
+          albumArtist: "Various Artists",
+          cdId: null,
+          discNumber: 0,
+          trackId: second.id,
+          trackNumber: 1
+        }
+      ],
+      entries
+    });
+
+    expect(next[0]?.track.album).toBe("Merged");
+    expect(next[0]?.track.albumArtist).toBe("Various Artists");
+    expect(next[0]?.track.trackNumber).toBe(2);
+    expect(next[1]?.track.trackNumber).toBe(1);
+    expect(next[0]?.track.filePath).toBe(first.filePath);
+    expect(next[1]?.track.filePath).toBe(second.filePath);
+  });
+
+  it("sets and clears the explicit single-CD id", () => {
+    const track = createTrack("C:\\music\\Solo.flac");
+    const solo = applyLibraryEdits({
+      edits: [
+        {
+          album: "Solo",
+          albumArtist: track.artist,
+          cdId: "solo:x",
+          discNumber: 0,
+          trackId: track.id,
+          trackNumber: 1
+        }
+      ],
+      entries: [createEntry(track)]
+    });
+
+    expect(solo[0]?.track.cdId).toBe("solo:x");
+
+    const merged = applyLibraryEdits({
+      edits: [
+        {
+          album: "Album",
+          albumArtist: track.artist,
+          cdId: null,
+          discNumber: 0,
+          trackId: track.id,
+          trackNumber: 1
+        }
+      ],
+      entries: solo
+    });
+
+    expect(merged[0]?.track.cdId).toBeUndefined();
+  });
+
+  it("keeps two single CDs apart when their long track ids share a prefix", () => {
+    const directory = "C:\\Users\\someone\\AppData\\Roaming\\Arlt-HiFi\\library\\Unknown Artist\\Unknown Album\\";
+    const first = createTrack(`${directory}first.flac`);
+    const second = createTrack(`${directory}second.flac`);
+    const entries = [createEntry(first), createEntry(second)];
+
+    const next = applyLibraryEdits({
+      edits: [
+        {
+          album: first.title,
+          albumArtist: first.artist,
+          cdId: `solo:${first.id}`,
+          discNumber: 0,
+          trackId: first.id,
+          trackNumber: 1
+        },
+        {
+          album: second.title,
+          albumArtist: second.artist,
+          cdId: `solo:${second.id}`,
+          discNumber: 0,
+          trackId: second.id,
+          trackNumber: 1
+        }
+      ],
+      entries
+    });
+
+    expect(next[0]?.track.cdId).toBe(`solo:${first.id}`);
+    expect(next[1]?.track.cdId).toBe(`solo:${second.id}`);
+    expect(next[0]?.track.cdId).not.toBe(next[1]?.track.cdId);
+  });
+
+  it("rejects unknown ids and leaves the entries untouched", () => {
+    const track = createTrack("C:\\music\\Keep.flac");
+    const entries = [createEntry(track)];
+
+    expect(() =>
+      applyLibraryEdits({
+        edits: [
+          {
+            album: "Album",
+            albumArtist: "",
+            cdId: null,
+            discNumber: 0,
+            trackId: "file://missing",
+            trackNumber: 1
+          }
+        ],
+        entries
+      })
+    ).toThrow("找不到该曲目。");
+
+    expect(entries[0]?.track.album).toBe("Terrace EP");
   });
 });
 

@@ -1,4 +1,4 @@
-import type { LibrarySortKey, Track } from "@arlhifi/shared";
+import type { LibrarySortKey, Track } from "@arlt-hifi/shared";
 
 /** 展厅里的一个槽位：同一个专辑/作者的多张 CD 捆在一起。 */
 export interface GalleryGroup {
@@ -13,9 +13,16 @@ export interface GalleryGroup {
 }
 
 const UNKNOWN_ALBUM = "Unknown Album";
-const UNKNOWN_ARTIST = "Unknown Artist";
+export const UNKNOWN_ARTIST = "Unknown Artist";
 
-const groupKeyOf = (track: Track): string => {
+/** 显式 CD 归属（单曲 CD）优先；否则按专辑/艺术家/碟号推导。 */
+export const groupIdForTrack = (track: Track): string => {
+  const cdId = track.cdId?.trim();
+
+  if (cdId && cdId.length > 0) {
+    return `cdid::${cdId}`;
+  }
+
   const hasAlbum = track.album.trim().length > 0 && track.album !== UNKNOWN_ALBUM;
   const artist = track.albumArtist?.trim() || track.artist;
   const hasArtist = artist.trim().length > 0 && artist !== UNKNOWN_ARTIST;
@@ -57,11 +64,49 @@ const compareGroups = (sortKey: LibrarySortKey) => {
         left.durationSeconds - right.durationSeconds || left.title.localeCompare(right.title);
     case "imported":
       return (left: GalleryGroup, right: GalleryGroup): number => left.order - right.order;
+    case "manual":
     case "title":
     default:
       return (left: GalleryGroup, right: GalleryGroup): number =>
         left.title.localeCompare(right.title) || left.artist.localeCompare(right.artist);
   }
+};
+
+/** 手动顺序：cdOrder 里出现的 CD 按它的位置排，没记录的（新导入/新合并）接在末尾并保持推导顺序。 */
+const applyManualOrder = (groups: readonly GalleryGroup[], cdOrder: readonly string[]): readonly GalleryGroup[] => {
+  if (cdOrder.length === 0) {
+    return groups;
+  }
+
+  const rank = new Map<string, number>();
+
+  for (const [index, id] of cdOrder.entries()) {
+    if (!rank.has(id)) {
+      rank.set(id, index);
+    }
+  }
+
+  return groups
+    .map((group, index) => ({ group, index }))
+    .sort((left, right) => {
+      const leftRank = rank.get(left.group.id);
+      const rightRank = rank.get(right.group.id);
+
+      if (leftRank !== undefined && rightRank !== undefined) {
+        return leftRank - rightRank;
+      }
+
+      if (leftRank !== undefined) {
+        return -1;
+      }
+
+      if (rightRank !== undefined) {
+        return 1;
+      }
+
+      return left.index - right.index;
+    })
+    .map((entry) => entry.group);
 };
 
 /**
@@ -70,12 +115,13 @@ const compareGroups = (sortKey: LibrarySortKey) => {
  */
 export const groupTracksForGallery = (
   tracks: readonly Track[],
-  sortKey: LibrarySortKey = "title"
+  sortKey: LibrarySortKey = "title",
+  cdOrder: readonly string[] = []
 ): readonly GalleryGroup[] => {
   const buckets = new Map<string, { order: number; tracks: Track[] }>();
 
   for (const [index, track] of tracks.entries()) {
-    const key = groupKeyOf(track);
+    const key = groupIdForTrack(track);
     const bucket = buckets.get(key);
 
     if (bucket) {
@@ -106,5 +152,5 @@ export const groupTracksForGallery = (
     });
   }
 
-  return groups.sort(compareGroups(sortKey));
+  return sortKey === "manual" ? applyManualOrder(groups, cdOrder) : groups.sort(compareGroups(sortKey));
 };

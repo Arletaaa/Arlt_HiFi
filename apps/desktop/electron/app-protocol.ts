@@ -59,8 +59,15 @@ export const createAppProtocolHandler = (distDirectory: string) => ({
       try {
         const contents = await readFile(filePath);
         const contentType = contentTypes[extname(filePath).toLowerCase()] ?? "application/octet-stream";
+        // 资源文件名带构建哈希，可以长缓存；贴图/模型路径固定，给 10 分钟，
+        // 保证反复开关设置时小球贴图不再重新读盘 + 解码。
+        const cacheControl = requestPath.startsWith("assets/")
+          ? "public, max-age=31536000, immutable"
+          : "public, max-age=600";
 
-        return new Response(contents, { headers: { "content-type": contentType } });
+        return new Response(contents, {
+          headers: { "cache-control": cacheControl, "content-type": contentType }
+        });
       } catch {
         return new Response("Not found", { status: 404 });
       }

@@ -1,6 +1,6 @@
 import { create, type StateCreator } from "zustand";
 import { createStore } from "zustand/vanilla";
-import { initialPlayerSnapshot, type PlaybackMode, type PlayerSnapshot, type SeekRequest, type Track } from "@arlhifi/shared";
+import { initialPlayerSnapshot, type PlaybackMode, type PlayerSnapshot, type SeekRequest, type Track } from "@arlt-hifi/shared";
 import { getNextIndex, getPreviousIndex, getReplacementIndex, pruneQueueToLibrary } from "./queue-logic";
 
 export interface LibraryActions {
@@ -72,6 +72,10 @@ const startTrack = (
   seekRequest: null,
   status
 });
+
+/** 下一首/上一首又落回同一首（单曲 CD、循环单曲）时，必须显式 seek 回 0 才会真的重播。 */
+const restartSeek = (state: PlayerStore, track: Track): Partial<PlayerStore> =>
+  state.currentTrack?.id === track.id ? { seekRequest: seekRequestFor(state, 0) } : {};
 
 /** 曲库切片：扫描结果与收藏。收藏只是 id 集合。 */
 const createLibrarySlice: StateCreator<PlayerStore, [], [], LibraryActions> = (set) => ({
@@ -210,7 +214,7 @@ const createPlaybackSlice: StateCreator<PlayerStore, [], [], PlaybackActions> = 
       const only = queue[0];
 
       if (queue.length === 1 && only) {
-        set(startTrack(state, queue, only, nextStatus));
+        set({ ...startTrack(state, queue, only, nextStatus), ...restartSeek(state, only) });
         return;
       }
 
@@ -218,7 +222,7 @@ const createPlaybackSlice: StateCreator<PlayerStore, [], [], PlaybackActions> = 
       return;
     }
 
-    set(startTrack(state, queue, next, nextStatus));
+    set({ ...startTrack(state, queue, next, nextStatus), ...restartSeek(state, next) });
   },
   previousTrack: () => {
     const state = get();
@@ -249,7 +253,10 @@ const createPlaybackSlice: StateCreator<PlayerStore, [], [], PlaybackActions> = 
       return;
     }
 
-    set(startTrack(state, queue, previous, state.status === "playing" ? "playing" : "paused"));
+    set({
+      ...startTrack(state, queue, previous, state.status === "playing" ? "playing" : "paused"),
+      ...restartSeek(state, previous)
+    });
   },
   seekTo: (seconds) => {
     const state = get();

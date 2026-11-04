@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLibraryManage } from "../hooks/use-library-manage";
+import { groupTracksForGallery } from "../lib/album-groups";
 import { getDesktopErrorMessage } from "../lib/desktop-error";
-import { sortTracks } from "../lib/library-filter";
 import { usePlayerStore } from "../store/player-store";
 import { useSettingsStore } from "../store/settings-store";
 import { TrackManager } from "./track-manager";
@@ -16,9 +16,23 @@ export const ManageOverlay = ({ onClose }: ManageOverlayProps) => {
   const library = usePlayerStore((state) => state.library);
   const loadLibrary = usePlayerStore((state) => state.loadLibrary);
   const librarySort = useSettingsStore((state) => state.librarySort);
-  const { batchBusy, busyTrackId, deleteTrack, editTrack, editTracks, error: manageError, renameTrack, setTrackCover } = useLibraryManage();
+  const cdOrder = useSettingsStore((state) => state.cdOrder);
+  const setCdOrder = useSettingsStore((state) => state.setCdOrder);
+  const setLibrarySort = useSettingsStore((state) => state.setLibrarySort);
+  const {
+    applyTrackEdits,
+    batchBusy,
+    busyTrackId,
+    deleteTrack,
+    error: manageError,
+    renameTrack,
+    setTrackCover
+  } = useLibraryManage();
   const [actionError, setActionError] = useState<string | null>(null);
-  const tracks = useMemo(() => sortTracks(library, librarySort), [library, librarySort]);
+  const groups = useMemo(
+    () => groupTracksForGallery(library, librarySort, cdOrder),
+    [cdOrder, library, librarySort]
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -94,15 +108,9 @@ export const ManageOverlay = ({ onClose }: ManageOverlayProps) => {
         <div className="manage-dialog">
           <header className="manage-dialog__head">
             <p className="preset-group__label">音乐库</p>
-            <h2 className="manage-dialog__title">管理曲目</h2>
+            <h2 className="manage-dialog__title">管理 CD</h2>
             <p className="manage-dialog__meta">
-              {library.length} 首 · 重命名 / CD 信息 / 封面 / 删除只作用于托管副本
-            </p>
-            <p className="manage-dialog__meta">
-              相同「专辑 + 专辑艺术家 + 碟号」会合并为一张 CD；音轨号决定 CD 内顺序。
-            </p>
-            <p className="manage-dialog__meta">
-              勾选多首可批量合并，音轨号按列表顺序自动 1..N。
+              {library.length} 首 · {groups.length} 张 CD · 拖拽只改清单，不移动文件、不写标签
             </p>
           </header>
 
@@ -124,13 +132,21 @@ export const ManageOverlay = ({ onClose }: ManageOverlayProps) => {
           <TrackManager
             batchBusy={batchBusy}
             busyTrackId={busyTrackId}
+            cdOrder={cdOrder}
             error={manageError}
-            onBatchEdit={(trackIds, edit) => editTracks(trackIds, edit)}
+            groups={groups}
+            onApply={(edits) => applyTrackEdits(edits)}
             onCover={(trackId) => setTrackCover(trackId)}
             onDelete={(trackId) => deleteTrack(trackId)}
-            onEdit={(trackId, edit) => editTrack(trackId, edit)}
             onRename={(trackId, title) => renameTrack(trackId, title)}
-            tracks={tracks}
+            onReorderCds={(ids, manual) => {
+              setCdOrder(ids);
+
+              if (manual) {
+                setLibrarySort("manual");
+              }
+            }}
+            tracks={library}
           />
         </div>
       </div>

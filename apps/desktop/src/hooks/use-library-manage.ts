@@ -1,17 +1,11 @@
 import { useCallback, useState } from "react";
-import type { ArltHifiDesktopApi, TrackMetadataEdit } from "@arlhifi/shared";
+import type { ArltHifiDesktopApi, Track, TrackEdit } from "@arlt-hifi/shared";
 import { getDesktopErrorMessage } from "../lib/desktop-error";
 import { usePlayerStore } from "../store/player-store";
 
 const webPreviewMessage = "网页预览无法管理曲库，请使用 Electron 桌面应用。";
 
-export interface BatchTrackEdit {
-  readonly album: string;
-  readonly albumArtist: string;
-  readonly discNumber: number;
-}
-
-/** 曲目级管理：重命名 / CD 信息 / 批量合并 / 设封面 / 删除；成功后重新读取曲库。 */
+/** 曲目级管理：重命名 / CD 归属批量写 / 设封面 / 删除；成功后重新读取曲库。 */
 export const useLibraryManage = () => {
   const loadLibrary = usePlayerStore((state) => state.loadLibrary);
   const [busyTrackId, setBusyTrackId] = useState<string | null>(null);
@@ -58,19 +52,9 @@ export const useLibraryManage = () => {
     [run]
   );
 
-  const editTrack = useCallback(
-    (trackId: string, edit: TrackMetadataEdit): Promise<boolean> =>
-      run(trackId, async (api) => {
-        await api.editTrack(trackId, edit);
-
-        return true;
-      }),
-    [run]
-  );
-
-  /** 批量合并：按传入顺序写音轨号 1..N，最后一次 reload。 */
-  const editTracks = useCallback(
-    async (trackIds: readonly string[], edit: BatchTrackEdit): Promise<boolean> => {
+  /** 一次 IPC 写完整棵树：合并 / 拆成单曲 / 组内调序都走这里。 */
+  const applyTrackEdits = useCallback(
+    async (edits: readonly TrackEdit[]): Promise<boolean> => {
       const api = window.arltHifiDesktop;
 
       if (!api) {
@@ -78,7 +62,7 @@ export const useLibraryManage = () => {
         return false;
       }
 
-      if (trackIds.length === 0) {
+      if (edits.length === 0) {
         return false;
       }
 
@@ -86,16 +70,9 @@ export const useLibraryManage = () => {
       setError(null);
 
       try {
-        for (const [index, trackId] of trackIds.entries()) {
-          await api.editTrack(trackId, {
-            album: edit.album,
-            albumArtist: edit.albumArtist,
-            discNumber: edit.discNumber,
-            trackNumber: index + 1
-          });
-        }
+        const tracks: readonly Track[] = await api.applyTrackEdits(edits);
 
-        loadLibrary(await api.loadLibrary());
+        loadLibrary(tracks);
         return true;
       } catch (caught) {
         setError(getDesktopErrorMessage(caught));
@@ -118,5 +95,5 @@ export const useLibraryManage = () => {
     [run]
   );
 
-  return { batchBusy, busyTrackId, deleteTrack, editTrack, editTracks, error, renameTrack, setTrackCover };
+  return { applyTrackEdits, batchBusy, busyTrackId, deleteTrack, error, renameTrack, setTrackCover };
 };

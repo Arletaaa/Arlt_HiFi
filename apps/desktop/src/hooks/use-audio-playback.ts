@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { createTrackMediaUrl } from "@arlhifi/shared";
+import { createTrackMediaUrl } from "@arlt-hifi/shared";
 import { getAudioPlaybackErrorMessage } from "./audio-playback";
 import { usePlayerStore } from "../store/player-store";
 

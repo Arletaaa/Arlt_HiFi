@@ -1,4 +1,4 @@
-# Arlt HiFi Player v1.0 范围与验收口径
+# Arlt-HiFi v1.0 范围与验收口径
 
 ## 状态
 

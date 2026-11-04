@@ -3,10 +3,141 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Arlt HiFi Player</title>
+    <link rel="icon" type="image/png" href="/brand/icon.png" />
+    <title>Arlt-HiFi</title>
+    <style>
+      /* 启动画面：跟 HTML 一起出现，3D 场景画出首帧后才淡出。 */
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0a0d16;
+      }
+
+      .boot-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at 50% 42%, #151d28 0%, #0a0d16 62%);
+        color: #f6f1e9;
+        transition:
+          opacity 520ms ease,
+          transform 520ms ease;
+      }
+
+      .boot-screen[data-leaving="true"] {
+        opacity: 0;
+        transform: scale(1.015);
+        pointer-events: none;
+      }
+
+      .boot-screen__inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        transform: translateY(-6px);
+      }
+
+      .boot-screen__brand {
+        margin: 0;
+        font-family: Georgia, "Songti SC", "Noto Serif SC", serif;
+        font-size: 34px;
+        font-weight: 400;
+        letter-spacing: 0.01em;
+      }
+
+      .boot-screen__meter {
+        display: flex;
+        align-items: flex-end;
+        gap: 5px;
+        height: 18px;
+      }
+
+      .boot-screen__meter span {
+        width: 2px;
+        height: 100%;
+        border-radius: 1px;
+        background: #ff7aa8;
+        transform-origin: bottom;
+        animation: boot-meter 1.15s ease-in-out infinite;
+      }
+
+      .boot-screen__meter span:nth-child(2) {
+        animation-delay: 0.14s;
+      }
+
+      .boot-screen__meter span:nth-child(3) {
+        animation-delay: 0.28s;
+      }
+
+      .boot-screen__meter span:nth-child(4) {
+        animation-delay: 0.42s;
+      }
+
+      .boot-screen__meter span:nth-child(5) {
+        animation-delay: 0.56s;
+      }
+
+      .boot-screen__caption {
+        margin: 0;
+        font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+        font-size: 9.5px;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        color: #8c8478;
+      }
+
+      @keyframes boot-meter {
+        0%,
+        100% {
+          opacity: 0.45;
+          transform: scaleY(0.16);
+        }
+
+        50% {
+          opacity: 0.95;
+          transform: scaleY(1);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .boot-screen__meter span {
+          animation: none;
+          transform: scaleY(0.45);
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="boot-screen" aria-label="正在载入唱片室" aria-live="polite" class="boot-screen" role="status">
+      <div class="boot-screen__inner">
+        <p class="boot-screen__brand">Arlt-HiFi</p>
+        <div aria-hidden="true" class="boot-screen__meter">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <p class="boot-screen__caption">Loading collection</p>
+      </div>
+    </div>
     <div id="root"></div>
+    <script>
+      // 兜底：20s 内场景仍未就绪也撤掉启动画面，避免永远停在加载态。
+      window.setTimeout(function () {
+        var boot = document.getElementById("boot-screen");
+
+        if (!boot) {
+          return;
+        }
+
+        boot.dataset.leaving = "true";
+        window.setTimeout(function () {
+          boot.remove();
+        }, 900);
+      }, 20000);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

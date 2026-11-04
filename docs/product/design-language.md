@@ -1,4 +1,4 @@
-# Arlt HiFi Player Design Language
+# Arlt-HiFi Design Language
 
 > 方向：「夜空唱片室」为色彩与材质基底。见 [ADR 004](../decisions/004-visual-direction.md)。
 > 本文档分两部分：**系统层**（面板、设置、音量环等仍有效）与**场景层**（3D 货架 + CD 盒 + 唱片机，规则由 [ADR 005](../decisions/005-scene-gallery.md) / [ADR 007](../decisions/007-v1-scope-convergence.md) 与 [场景规格](scene-gallery.md) 定义）。

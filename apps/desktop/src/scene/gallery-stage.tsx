@@ -1,10 +1,12 @@
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Group, MathUtils, Mesh, PMREMGenerator, RepeatWrapping, SRGBColorSpace, Texture, TextureLoader } from "three";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Group, MathUtils, Mesh, PMREMGenerator, Texture, Vector2 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import type { Track } from "@arlhifi/shared";
+import type { Track } from "@arlt-hifi/shared";
+import { dismissBootScreen } from "../boot-screen";
 import type { GalleryGroup } from "../lib/album-groups";
+import { formatTrackTitles } from "../lib/caption";
 import { getSeedHue } from "../lib/seed";
 import { normalizeLightPreset } from "../lib/light-presets";
 import { buildCaseModel, CASE_MODEL_URL } from "./case-model";
@@ -14,6 +16,7 @@ import { createTurntableBridge, TURNTABLE_MODEL_URL } from "./turntable-interact
 import type { TurntableTransport } from "./turntable-interaction";
 import { ContactShadow } from "./contact-shadows";
 import { useCoverTexture } from "./cover-textures";
+import { usePresetSurfaceTextures } from "./preset-textures";
 import { countRenderedFrame, sceneStats } from "./perf";
 import { useSettingsStore } from "../store/settings-store";
 import { usePlayerStore } from "../store/player-store";
@@ -137,7 +140,6 @@ interface DiscProps {
   readonly highlighted?: boolean;
   readonly id: string;
   readonly isCurrent: boolean;
-  readonly onPointerOverAction?: () => void;
   readonly onSelect: () => void;
   readonly position: readonly [number, number, number];
   readonly rotationY: number;
@@ -156,7 +158,6 @@ const Disc = ({
   highlighted = false,
   id,
   isCurrent,
-  onPointerOverAction,
   onSelect,
   position,
   rotationY
@@ -188,6 +189,12 @@ const Disc = ({
         castShadow
         onClick={(event) => {
           event.stopPropagation();
+
+          // 拖动陈列区时松手会补一次 click；位移超过阈值就当作滑动，不打开详情。
+          if (event.delta > 6) {
+            return;
+          }
+
           onSelect();
         }}
         onPointerOut={() => {
@@ -196,7 +203,6 @@ const Disc = ({
         onPointerOver={(event) => {
           event.stopPropagation();
           setHovered(true);
-          onPointerOverAction?.();
         }}
         ref={groupRef}
       >
@@ -215,26 +221,24 @@ const Disc = ({
 };
 /* ---------- 展架 ---------- */
 
-/** 墙面墙皮（Fabric028，CC0）。 */
+/** 墙面墙皮：颜色 + 法线 + 粗糙度三张一起用，板缝/纹理才吃光。 */
+const WALL_REPEAT: readonly [number, number] = [26, 3.55];
+const WALL_NORMAL_SCALE = new Vector2(0.8, 0.8);
+
 const WallSurface = () => {
   const preset = useSettingsStore((state) => state.scenePreset);
-  const map = useLoader(TextureLoader, `/textures/wall/${preset.wall}-color.jpg`);
-
-  useEffect(() => {
-    map.anisotropy = 8;
-    map.wrapS = RepeatWrapping;
-    map.wrapT = RepeatWrapping;
-    map.repeat.set(26, 3.55);
-    map.colorSpace = SRGBColorSpace;
-    map.needsUpdate = true;
-  }, [map]);
+  const textures = usePresetSurfaceTextures(`/textures/wall/${preset.wall}`, WALL_REPEAT);
 
   return (
     <meshStandardMaterial
       color="#9d9186"
-      map={map}
+      key={textures ? "mapped" : "solid"}
+      map={textures?.color ?? null}
       metalness={0.02}
-      roughness={0.92}
+      normalMap={textures?.normal ?? null}
+      normalScale={WALL_NORMAL_SCALE}
+      roughness={textures ? 1 : 0.92}
+      roughnessMap={textures?.roughness ?? null}
     />
   );
 };
@@ -251,53 +255,48 @@ const BackWall = () => (
   </mesh>
 );
 
-/** 柜体立面（Wood008 竖纹，CC0）。 */
+/** 柜体立面（Wood008 竖纹，CC0）：竖纹材质直接映射为竖向。 */
+const CABINET_REPEAT: readonly [number, number] = [20, 0.6];
+const CABINET_NORMAL_SCALE = new Vector2(0.6, 0.6);
+
 const CabinetSurface = () => {
   const preset = useSettingsStore((state) => state.scenePreset);
-  const map = useLoader(TextureLoader, `/textures/base/${preset.base}-color.jpg`);
-
-  useEffect(() => {
-    map.anisotropy = 8;
-    map.wrapS = RepeatWrapping;
-    map.wrapT = RepeatWrapping;
-    // 柜体 40 × 1.2，格子 2m；竖纹材质直接映射为竖向
-    map.repeat.set(20, 0.6);
-    map.colorSpace = SRGBColorSpace;
-    map.needsUpdate = true;
-  }, [map]);
+  const textures = usePresetSurfaceTextures(`/textures/base/${preset.base}`, CABINET_REPEAT);
 
   return (
     <meshStandardMaterial
       color="#c2b09a"
-      map={map}
-      metalness={0.05}
-      roughness={0.7}
+      key={textures ? "mapped" : "solid"}
+      map={textures?.color ?? null}
+      metalness={0.02}
+      normalMap={textures?.normal ?? null}
+      normalScale={CABINET_NORMAL_SCALE}
+      roughness={textures ? 1 : 0.7}
+      roughnessMap={textures?.roughness ?? null}
     />
   );
 };
 
 /** 台面：真实木纹贴图（ambientCG Wood066，CC0）。 */
+const DESK_REPEAT: readonly [number, number] = [20, 0.31];
+const DESK_NORMAL_SCALE = new Vector2(0.7, 0.7);
+
 const DeskSurface = () => {
   const preset = useSettingsStore((state) => state.scenePreset);
-  const map = useLoader(TextureLoader, `/textures/table/${preset.table}-color.jpg`);
-
-  useEffect(() => {
-    map.anisotropy = 8;
-    map.wrapS = RepeatWrapping;
-    map.wrapT = RepeatWrapping;
-    // 台面 40 × 0.62，格子 2m；横向木纹沿台面长边
-    map.repeat.set(20, 0.31);
-    map.colorSpace = SRGBColorSpace;
-    map.needsUpdate = true;
-  }, [map]);
+  const textures = usePresetSurfaceTextures(`/textures/table/${preset.table}`, DESK_REPEAT);
 
   return (
     <mesh castShadow position={[0, BASE_Y - 0.32, 0.05]} receiveShadow>
       <boxGeometry args={[40, 0.12, 0.62]} />
       <meshStandardMaterial
-        map={map}
-        metalness={0.04}
-        roughness={0.72}
+        color={textures ? "#ffffff" : "#6b4a2f"}
+        key={textures ? "mapped" : "solid"}
+        map={textures?.color ?? null}
+        metalness={0.02}
+        normalMap={textures?.normal ?? null}
+        normalScale={DESK_NORMAL_SCALE}
+        roughness={textures ? 1 : 0.72}
+        roughnessMap={textures?.roughness ?? null}
       />
     </mesh>
   );
@@ -334,6 +333,23 @@ const FrameProbe = () => {
 
   return null;
 };
+
+/** 3D 首帧真正画出来后再撤掉 HTML 启动画面，加载期间不会出现黑屏或图标一闪。 */
+const BootScreenDismisser = () => {
+  const dismissed = useRef(false);
+
+  useFrame(() => {
+    if (dismissed.current) {
+      return;
+    }
+
+    dismissed.current = true;
+    dismissBootScreen();
+  });
+
+  return null;
+};
+
 const Carousel = ({
   groups,
   currentGroupId,
@@ -342,7 +358,7 @@ const Carousel = ({
   hiddenGroupId,
   highlightedGroupId,
   interactive,
-  onHover,
+  onCenterChange,
   onOpen,
   scrollRef
 }: {
@@ -353,12 +369,13 @@ const Carousel = ({
   readonly hiddenGroupId: string | null;
   readonly highlightedGroupId: string | null;
   readonly interactive: boolean;
-  readonly onHover: (label: string | null) => void;
+  readonly onCenterChange: (index: number, slotX: number) => void;
   readonly onOpen: (group: GalleryGroup, slotX: number) => void;
   readonly scrollRef: { current: number };
 }) => {
   const { gl, invalidate } = useThree();
   const lastScroll = useRef(0);
+  const lastCenterIndex = useRef(-1);
   const trackRef = useRef<Group>(null);
   const total = groups.length;
   const minOffset = -Math.max(0, total - 1) * GAP;
@@ -501,6 +518,16 @@ const Carousel = ({
     if (Math.abs(pointer.offset - pointer.target) > 0.0005 || Math.abs(pointer.velocity) > 0.0005) {
       invalidate();
     }
+
+    // 陈列区停在正中的那张 CD：左下角大字要跟着它走。
+    if (total > 0) {
+      const centerIndex = MathUtils.clamp(Math.round(-pointer.offset / GAP), 0, total - 1);
+
+      if (centerIndex !== lastCenterIndex.current) {
+        lastCenterIndex.current = centerIndex;
+        onCenterChange(centerIndex, centerIndex * GAP + pointer.offset);
+      }
+    }
   });
 
   return (
@@ -514,9 +541,6 @@ const Carousel = ({
             id={group.id}
             isCurrent={group.id === currentGroupId}
             key={group.id}
-            onPointerOverAction={() => {
-              onHover(`${group.artist} · ${group.title}`);
-            }}
             onSelect={() => {
               if (interactive) {
                 onOpen(group, index * GAP + state.current.offset);
@@ -538,6 +562,7 @@ export interface GalleryExperienceProps {
   readonly focusGroupId: string | null;
   readonly focusNonce: number;
   readonly groups: readonly GalleryGroup[];
+  readonly onPhaseChange: (phase: ScenePhase) => void;
   readonly tracks: readonly Track[];
 }
 
@@ -546,9 +571,12 @@ export const GalleryExperience = ({
   focusGroupId,
   focusNonce,
   groups,
+  onPhaseChange,
   tracks
 }: GalleryExperienceProps) => {
-  const [hoverLabel, setHoverLabel] = useState<string | null>(null);
+  const [centerIndex, setCenterIndex] = useState(0);
+  const [centerSlotX, setCenterSlotX] = useState(0);
+  const [carouselFocusIndex, setCarouselFocusIndex] = useState(-1);
   const [detailGroup, setDetailGroup] = useState<GalleryGroup | null>(null);
   const [phase, setPhase] = useState<ScenePhase>("gallery");
   const turntableBridge = useMemo(() => createTurntableBridge(), []);
@@ -584,6 +612,11 @@ export const GalleryExperience = ({
     detailGroup && phase === "detail" && transport.cdSeated && detailTracks.length > 0
   );
 
+  // 场景阶段交给 App：搜索框只在陈列区出现。
+  useEffect(() => {
+    onPhaseChange(phase);
+  }, [onPhaseChange, phase]);
+
   useEffect(() => {
     if (import.meta.env.DEV && new URLSearchParams(window.location.search).get("detail") === "1" && groups.length > 1) {
       setDetailGroup(groups[1] ?? null);
@@ -612,7 +645,30 @@ export const GalleryExperience = ({
   }, [focusGroupId, focusNonce]);
 
   const searchFocusIndex = focusGroupId ? groups.findIndex((group) => group.id === focusGroupId) : -1;
-  const focusGroup = groups.find((group) => group.id === currentGroupId) ?? groups[0] ?? null;
+  const centerGroup = groups[Math.min(centerIndex, Math.max(0, groups.length - 1))] ?? null;
+
+  useEffect(() => {
+    if (searchFocusIndex >= 0) {
+      setCarouselFocusIndex(searchFocusIndex);
+    }
+  }, [focusNonce, searchFocusIndex]);
+
+  const centerTitles = useMemo(() => {
+    if (!centerGroup) {
+      return "";
+    }
+
+    const byId = new Map(tracks.map((track) => [track.id, track]));
+
+    return formatTrackTitles(
+      centerGroup.trackIds.map((trackId) => byId.get(trackId)?.title ?? "")
+    );
+  }, [centerGroup, tracks]);
+
+  const handleCenterChange = useCallback((index: number, slotX: number): void => {
+    setCenterIndex(index);
+    setCenterSlotX(slotX);
+  }, []);
 
   const handleOpen = (group: GalleryGroup, slotX: number): void => {
     if (phase !== "gallery") {
@@ -623,7 +679,6 @@ export const GalleryExperience = ({
     setSelectedSlotX(slotX);
     setStartedAt(performance.now());
     setPhase("entering");
-    setHoverLabel(null);
   };
 
   const handleEntered = (): void => {
@@ -647,6 +702,79 @@ export const GalleryExperience = ({
     setSelectedSlotX(0);
   };
 
+  // 基础键盘：陈列区左右切 CD，交互区 Space 上盘/播放、Esc 返回；设置浮层打开时不抢按键。
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.defaultPrevented || document.querySelector(".settings-overlay")) {
+        return;
+      }
+
+      if (phase === "gallery") {
+        const target = event.target;
+
+        if (
+          target instanceof HTMLElement &&
+          (target.isContentEditable ||
+            ["A", "BUTTON", "INPUT", "SELECT", "TEXTAREA"].includes(target.tagName))
+        ) {
+          return;
+        }
+
+        if (event.key === "Enter" && centerGroup) {
+          event.preventDefault();
+          handleOpen(centerGroup, centerSlotX);
+          return;
+        }
+
+        if (event.key === "ArrowLeft" && centerIndex > 0) {
+          event.preventDefault();
+          scrollRef.current += 1;
+        } else if (event.key === "ArrowRight" && centerIndex < groups.length - 1) {
+          event.preventDefault();
+          scrollRef.current -= 1;
+        }
+
+        return;
+      }
+
+      if (phase !== "detail") {
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setPhase("closing");
+        return;
+      }
+
+      const target = event.target;
+
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          ["A", "BUTTON", "INPUT", "SELECT", "TEXTAREA"].includes(target.tagName))
+      ) {
+        return;
+      }
+
+      if (event.code === "Space" || event.key === "Enter") {
+        event.preventDefault();
+
+        if (!transport.cdSeated) {
+          turntableBridge.placeDiscOnPlatter?.();
+        } else {
+          turntableBridge.playFromDetail?.();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [centerGroup, centerIndex, centerSlotX, groups.length, phase, transport.cdSeated, turntableBridge]);
+
   return (
     <>
       <Canvas
@@ -661,6 +789,7 @@ export const GalleryExperience = ({
       >
         <ProceduralEnvironment />
         <FrameProbe />
+        <BootScreenDismisser />
         <SceneLighting variant={lightVariant} />
         <LightEffects variant={lightVariant} />
         <CameraRig
@@ -672,13 +801,13 @@ export const GalleryExperience = ({
         <BackWall />
         <Carousel
           currentGroupId={currentGroupId}
-          focusIndex={searchFocusIndex}
+          focusIndex={carouselFocusIndex}
           focusNonce={focusNonce}
           groups={groups}
           hiddenGroupId={detailGroup?.id ?? null}
           highlightedGroupId={highlightedGroupId}
           interactive={phase === "gallery"}
-          onHover={setHoverLabel}
+          onCenterChange={handleCenterChange}
           onOpen={handleOpen}
           scrollRef={scrollRef}
         />
@@ -731,16 +860,20 @@ export const GalleryExperience = ({
       {detailPlayerVisible ? (
         <DetailPlayer
           onPlayPause={() => {
-            turntableBridge.toggleStartStop?.();
+            turntableBridge.playFromDetail?.();
           }}
           tracks={detailTracks}
           transport={transport}
         />
       ) : (
-        <div className="gallery-caption">
-          <p className="gallery-caption__name">{focusGroup?.title ?? "CD Collection"}</p>
-          <p className="gallery-caption__hint">
-            {hoverLabel ?? (focusGroup ? `${focusGroup.artist} · 共 ${groups.length} 张专辑` : "曲库为空 · 右下角设置里可导入音乐")}
+        <div aria-atomic="true" aria-live="polite" className="gallery-caption">
+          <p className="gallery-caption__name" key={centerGroup?.id ?? "empty"}>
+            {centerGroup?.title ?? "CD Collection"}
+          </p>
+          <p className="gallery-caption__sets">
+            {centerGroup
+              ? centerTitles
+              : "曲库为空 · 右下角设置里可导入音乐"}
           </p>
         </div>
       )}
@@ -768,6 +901,28 @@ export const GalleryExperience = ({
             ›
           </button>
         </div>
+      ) : null}
+
+      {/* 3D CD 的键盘/读屏投影：Tab 聚焦时货架滑到该 CD，Enter 直接打开。 */}
+      {phase === "gallery" && groups.length > 0 ? (
+        <nav aria-label="CD 列表" className="gallery-a11y">
+          {groups.map((group, index) => (
+            <button
+              aria-label={`打开 ${group.title}`}
+              key={group.id}
+              onClick={() => {
+                setCarouselFocusIndex(index);
+                handleOpen(group, (index - centerIndex) * GAP);
+              }}
+              onFocus={() => {
+                setCarouselFocusIndex(index);
+              }}
+              type="button"
+            >
+              {group.title}
+            </button>
+          ))}
+        </nav>
       ) : null}
 
       {/* 有当前曲目就显示音量环：详情场景里开始播放后也能直接调音量。 */}

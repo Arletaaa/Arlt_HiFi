@@ -7,7 +7,7 @@ import {
   getQualityLabel,
   type PlaybackMode,
   type Track
-} from "@arlhifi/shared";
+} from "@arlt-hifi/shared";
 import { usePlayerStore } from "../store/player-store";
 import type { TurntableTransport } from "../scene/turntable-interaction";
 
@@ -222,13 +222,13 @@ export const DetailPlayer = ({ onPlayPause, tracks, transport }: DetailPlayerPro
             <PreviousIcon />
           </button>
           <button
-            aria-label={transport.spinning ? "暂停" : "播放"}
+            aria-label={isPlaying ? "暂停" : "播放"}
             className="detail-player__button detail-player__button--play"
             onClick={onPlayPause}
-            title={transport.spinning ? "暂停" : "播放"}
+            title={isPlaying ? "暂停" : "播放"}
             type="button"
           >
-            {transport.spinning ? <PauseIcon /> : <PlayIcon />}
+            {isPlaying ? <PauseIcon /> : <PlayIcon />}
           </button>
           <button
             aria-disabled={nextDisabled}

@@ -1,8 +1,11 @@
 import electron from "electron";
-import { pathToFileURL } from "node:url";
-import { createMediaAccessList, resolveMediaRequest } from "./media-access.js";
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
+import { Readable } from "node:stream";
+import { createMediaAccessList, getMediaContentType, resolveMediaRequest } from "./media-access.js";
+import { parseByteRange } from "./media-range.js";
 
-const { net, protocol } = electron;
+const { protocol } = electron;
 
 export const mediaProtocolScheme = "arlt-hifi-media";
 
@@ -16,6 +19,15 @@ export const registerMediaProtocolPrivileges = (): void => {
       }
     }
   ]);
+};
+
+const createFileStream = (filePath: string, start?: number, end?: number): ReadableStream<Uint8Array> => {
+  const stream =
+    start !== undefined && end !== undefined
+      ? createReadStream(filePath, { end, start })
+      : createReadStream(filePath);
+
+  return Readable.toWeb(stream) as ReadableStream<Uint8Array>;
 };
 
 export const createMediaProtocolAccess = () => {
@@ -42,7 +54,51 @@ export const createMediaProtocolAccess = () => {
           return new Response("Media file is not available.", { status: 403 });
         }
 
-        return net.fetch(pathToFileURL(resolved.filePath).toString());
+        let fileSize: number;
+
+        try {
+          fileSize = (await stat(resolved.filePath)).size;
+        } catch {
+          return new Response("Media file is not available.", { status: 404 });
+        }
+
+        const contentType = getMediaContentType(resolved.filePath);
+        const range = parseByteRange(request.headers.get("range"), fileSize);
+
+        if (range === "unsatisfiable") {
+          return new Response(null, {
+            status: 416,
+            headers: {
+              "accept-ranges": "bytes",
+              "content-range": `bytes */${fileSize}`,
+              "content-type": contentType
+            }
+          });
+        }
+
+        if (!range) {
+          return new Response(request.method === "HEAD" ? null : createFileStream(resolved.filePath), {
+            status: 200,
+            headers: {
+              "accept-ranges": "bytes",
+              "content-length": String(fileSize),
+              "content-type": contentType
+            }
+          });
+        }
+
+        return new Response(
+          request.method === "HEAD" ? null : createFileStream(resolved.filePath, range.start, range.end),
+          {
+            status: 206,
+            headers: {
+              "accept-ranges": "bytes",
+              "content-length": String(range.end - range.start + 1),
+              "content-range": `bytes ${range.start}-${range.end}/${fileSize}`,
+              "content-type": contentType
+            }
+          }
+        );
       });
     }
   };

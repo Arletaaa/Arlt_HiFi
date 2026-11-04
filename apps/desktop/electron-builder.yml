@@ -1,15 +1,18 @@
-appId: com.arlt.hifi
-productName: Arlt HiFi Player
+appId: com.arlthifi
+productName: Arlt-HiFi
 directories:
   output: release
 files:
   - dist/**/*
   - dist-electron/**/*
   - package.json
+  # renderer 与主进程都已由 Vite/esbuild 打包，生产依赖不需要再进 asar。
+  - "!node_modules/**/*"
 asar: true
 npmRebuild: false
 win:
+  icon: build/icon.ico
   target:
     - portable
 portable:
-  artifactName: ArltHiFiPlayer-${version}-portable.exe
+  artifactName: arlt-hifi-${version}-portable.exe

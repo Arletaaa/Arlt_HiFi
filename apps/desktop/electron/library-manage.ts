@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { copyFile, mkdir, rename, rm } from "node:fs/promises";
 import { dirname, extname, join } from "node:path";
-import type { Track } from "@arlhifi/shared";
+import type { Track } from "@arlt-hifi/shared";
 import type { LibraryEntry } from "./library-manifest.js";
 import { resolveAvailablePath, sanitizePathSegment } from "./library-import.js";
 import { isSupportedImageFile } from "./media-access.js";
@@ -52,6 +52,58 @@ export const renameLibraryTrack = async (options: {
 
 const normalizeCue = (value: number): number =>
   Number.isFinite(value) ? Math.min(999, Math.max(0, Math.round(value))) : 0;
+
+export interface LibraryEditInput {
+  readonly album: string;
+  readonly albumArtist: string;
+  readonly cdId: string | null;
+  readonly discNumber: number;
+  readonly trackId: string;
+  readonly trackNumber: number;
+}
+
+/**
+ * 批量写 CD 归属与顺序（整棵树一次落盘）：
+ * 合并 / 拆成单曲 / 组内调序都走这里，避免逐首 IPC 中途失败留下半套数据。
+ */
+export const applyLibraryEdits = (options: {
+  readonly edits: readonly LibraryEditInput[];
+  readonly entries: readonly LibraryEntry[];
+}): readonly LibraryEntry[] => {
+  if (options.edits.length === 0) {
+    return options.entries;
+  }
+
+  const entriesById = new Map(options.entries.map((entry) => [entry.track.id, entry]));
+  const edited = new Map<string, Track>();
+
+  for (const edit of options.edits) {
+    const entry = entriesById.get(edit.trackId);
+
+    if (!entry) {
+      throw new Error("找不到该曲目。");
+    }
+
+    // cdId 里带的是完整 trackId（Windows 路径 URL 编码后很长），不能截断：
+    // 截断会让同目录下的两首单曲拿到同一个 id，被错误合并成一张 CD。
+    const cdId = edit.cdId?.trim().slice(0, 2048) || undefined;
+
+    edited.set(edit.trackId, {
+      ...entry.track,
+      album: edit.album.trim().slice(0, 120) || entry.track.album,
+      albumArtist: edit.albumArtist.trim().slice(0, 120) || undefined,
+      cdId,
+      discNumber: normalizeCue(edit.discNumber),
+      trackNumber: normalizeCue(edit.trackNumber)
+    });
+  }
+
+  return options.entries.map((entry) => {
+    const track = edited.get(entry.track.id);
+
+    return track ? { ...entry, track } : entry;
+  });
+};
 
 /**
  * 编辑 CD 信息：专辑 / 专辑艺术家 / 碟号 / 音轨号。

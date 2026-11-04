@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { access, mkdir, readdir, writeFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { parseFile } from "music-metadata";
-import { getAudioQuality, type AudioQuality, type Track } from "@arlhifi/shared";
+import { getAudioQuality, type AudioQuality, type Track } from "@arlt-hifi/shared";
 import { isSupportedAudioFile } from "./media-access.js";
 
 export { isSupportedAudioFile };

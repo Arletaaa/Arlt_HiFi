@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultAppSettings, defaultScenePreset } from "@arlhifi/shared";
+import { defaultAppSettings, defaultScenePreset } from "@arlt-hifi/shared";
 import { mergeSettings } from "./settings-store.js";
 
 describe("settings merging", () => {
@@ -18,6 +18,7 @@ describe("settings merging", () => {
     });
 
     expect(merged).toEqual({
+      cdOrder: [],
       librarySort: "duration",
       motionTier: "rich",
       playbackMode: "shuffle",
@@ -25,6 +26,16 @@ describe("settings merging", () => {
       theme: "light",
       volume: 55
     });
+  });
+
+  it("keeps a manual CD order and drops junk entries", () => {
+    const merged = mergeSettings({
+      cdOrder: ["Kaze::Zeta", "Kaze::Zeta", 3, "   ", "Kaze::Alpha"],
+      librarySort: "manual"
+    });
+
+    expect(merged.librarySort).toBe("manual");
+    expect(merged.cdOrder).toEqual(["Kaze::Zeta", "Kaze::Alpha"]);
   });
 
   it("migrates the old playback modes", () => {

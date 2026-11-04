@@ -1,5 +1,5 @@
-﻿import { useEffect, useState } from "react";
-import type { MotionTier } from "@arlhifi/shared";
+import { useEffect, useState } from "react";
+import type { MotionTier } from "@arlt-hifi/shared";
 import { useSettingsStore } from "../store/settings-store";
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";

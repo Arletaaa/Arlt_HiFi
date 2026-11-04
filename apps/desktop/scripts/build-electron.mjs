@@ -4,7 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * 主进程与 preload 必须打包：`@arlhifi/shared` 只发布 TS 源码，
+ * 主进程与 preload 必须打包：`@arlt-hifi/shared` 只发布 TS 源码，
  * Node 在运行时无法直接加载，之前 tsc 直接产出的 ESM 会让应用一启动就崩。
  * - main：ESM（package.json 是 `"type": "module"`）；
  * - preload：CJS `.cjs`（沙箱 preload 不支持 ESM import）。

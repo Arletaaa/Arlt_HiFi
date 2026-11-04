@@ -1,4 +1,4 @@
-import type { PlaybackMode, Track } from "@arlhifi/shared";
+import type { PlaybackMode, Track } from "@arlt-hifi/shared";
 
 /** 只保留仍存在于曲库中的队列项（换目录/刷新后调用）。 */
 export const pruneQueueToLibrary = (queue: readonly Track[], library: readonly Track[]): readonly Track[] => {

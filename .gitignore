@@ -59,11 +59,14 @@ CLAUDE.md
 .agents/
 skills-lock.json
 
-# AI 流程文档（本地保留，不入库）
+# AI agent harness 与任务模板（不属于应用源码，不入库）
+packages/agent-harness/
+
+# AI 流程 / 提示词 / 评测文档（本地保留，不入库）
 docs/prompts/
 docs/evals/
-docs/workflow/skills.md
-docs/workflow/rebuild-workflow.md
+docs/workflow/
+docs/handoff/
 
 # Claude Code local overrides (personal preferences, not tracked)
 .refs/

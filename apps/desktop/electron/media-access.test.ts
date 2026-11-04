@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createMediaAccessList, isSupportedImageFile, isSupportedMediaFile, resolveMediaRequest } from "./media-access.js";
+import {
+  createMediaAccessList,
+  getMediaContentType,
+  isSupportedImageFile,
+  isSupportedMediaFile,
+  resolveMediaRequest
+} from "./media-access.js";
 
 describe("media request resolution", () => {
   it("parses audio and image URLs", () => {
@@ -51,6 +57,13 @@ describe("media access list", () => {
 
     expect(access.has("audio", "D:\\Music\\a.flac")).toBe(false);
     expect(access.has("audio", "D:\\Music\\b.flac")).toBe(true);
+  });
+
+  it("maps media extensions to response content types", () => {
+    expect(getMediaContentType("D:\\Music\\a.FLAC")).toBe("audio/flac");
+    expect(getMediaContentType("D:\\Music\\a.wav")).toBe("audio/wav");
+    expect(getMediaContentType("D:\\Pictures\\sky.webp")).toBe("image/webp");
+    expect(getMediaContentType("D:\\Music\\notes.txt")).toBe("application/octet-stream");
   });
 
   it("recognizes supported image extensions only", () => {

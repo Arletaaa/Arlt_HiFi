@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Track } from "@arlhifi/shared";
-import { filterTracks, sortTracks } from "./library-filter";
+import type { Track } from "@arlt-hifi/shared";
+import { filterTracks } from "./library-filter";
 
 const createTrack = (id: string, title: string, artist: string, album: string, durationSeconds: number, ext: string): Track => ({
   id,
@@ -37,37 +37,5 @@ describe("library filtering", () => {
 
   it("returns an empty list when nothing matches", () => {
     expect(filterTracks(tracks, "zzz")).toHaveLength(0);
-  });
-});
-
-describe("library sorting", () => {
-  it("sorts by title with locale-aware comparison", () => {
-    const sorted = sortTracks(tracks, "title");
-
-    for (let index = 1; index < sorted.length; index += 1) {
-      const previous = sorted[index - 1];
-      const current = sorted[index];
-
-      if (!previous || !current) {
-        continue;
-      }
-
-      expect(previous.title.localeCompare(current.title)).toBeLessThanOrEqual(0);
-    }
-  });
-
-  it("sorts by duration ascending", () => {
-    expect(sortTracks(tracks, "duration").map((track) => track.id)).toEqual(["3", "1", "4", "2"]);
-  });
-
-  it("keeps the manifest order for imported", () => {
-    expect(sortTracks(tracks, "imported").map((track) => track.id)).toEqual(["1", "2", "3", "4"]);
-  });
-
-  it("does not mutate the input", () => {
-    const original = tracks.map((track) => track.id);
-    sortTracks(tracks, "duration");
-
-    expect(tracks.map((track) => track.id)).toEqual(original);
   });
 });
