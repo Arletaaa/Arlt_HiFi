@@ -6,9 +6,12 @@ interface SettingsStore {
   readonly cdOrder: readonly string[];
   readonly hydration: "pending" | "ready";
   readonly hydrate: (settings: AppSettings) => void;
+  /** 应用内选择的曲库根目录；null = 沿用安装配置 / 默认位置。 */
+  readonly libraryRoot: string | null;
   readonly librarySort: LibrarySortKey;
   readonly motionTier: MotionTier;
   readonly setCdOrder: (cdOrder: readonly string[]) => void;
+  readonly setLibraryRoot: (libraryRoot: string | null) => void;
   readonly setLibrarySort: (librarySort: LibrarySortKey) => void;
   readonly setMotionTier: (motionTier: MotionTier) => void;
   readonly setTheme: (theme: ThemeMode) => void;
@@ -25,12 +28,14 @@ export const useSettingsStore = create<SettingsStore>()((set) => ({
   theme: "dark",
   motionTier: "standard",
   librarySort: "title",
+  libraryRoot: null,
   cdOrder: [],
   hydration: "pending",
   hydrate: (settings) => {
     set({
       theme: settings.theme,
       motionTier: settings.motionTier,
+      libraryRoot: settings.libraryRoot ?? null,
       librarySort: settings.librarySort ?? "title",
       cdOrder: settings.cdOrder ?? [],
       scenePreset: settings.scenePreset ?? defaultScenePreset,
@@ -40,6 +45,9 @@ export const useSettingsStore = create<SettingsStore>()((set) => ({
   scenePreset: defaultScenePreset,
   setScenePreset: (patch) => {
     set((state) => ({ scenePreset: { ...state.scenePreset, ...patch } }));
+  },
+  setLibraryRoot: (libraryRoot) => {
+    set({ libraryRoot });
   },
   setLibrarySort: (librarySort) => {
     set({ librarySort });

@@ -32,7 +32,7 @@
 
 ## 音乐库
 
-- **数据目录可配置**：把 `library/` 与 `covers/` 从 `%APPDATA%` 迁到用户指定盘符（现在只能靠 `mklink /J` 变通）。改动涉及 `settings.json` 新增 `libraryRoot`、导入写入路径、旧条目迁移与媒体白名单，需要单独设计迁移与回滚。
+- 数据目录：曲库根目录已可在应用内设置（v1.0.2，`settings.json.libraryRoot`）；`covers/` 与 `library.json` 仍固定在 `%APPDATA%\Arlt-HiFi`，且暂不支持迁移曲库文件。
 - 监听文件夹变更、自动增量扫描。
 - 增量索引与持久化数据库（SQLite）——只在曲库达到数千级后再评估。
 - 标签写回、封面编辑、联网抓取封面。

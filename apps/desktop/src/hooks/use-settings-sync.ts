@@ -11,6 +11,7 @@ export const useSaveSettings = (): void => {
   const theme = useSettingsStore((state) => state.theme);
   const motionTier = useSettingsStore((state) => state.motionTier);
   const librarySort = useSettingsStore((state) => state.librarySort);
+  const libraryRoot = useSettingsStore((state) => state.libraryRoot);
   const cdOrder = useSettingsStore((state) => state.cdOrder);
   const scenePreset = useSettingsStore((state) => state.scenePreset);
   const hydration = useSettingsStore((state) => state.hydration);
@@ -27,6 +28,7 @@ export const useSaveSettings = (): void => {
 
     const settings: AppSettings = {
       cdOrder,
+      libraryRoot,
       librarySort,
       motionTier,
       playbackMode,
@@ -54,5 +56,5 @@ export const useSaveSettings = (): void => {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [cdOrder, hydration, librarySort, motionTier, playbackMode, scenePreset, theme, volume]);
+  }, [cdOrder, hydration, libraryRoot, librarySort, motionTier, playbackMode, scenePreset, theme, volume]);
 };

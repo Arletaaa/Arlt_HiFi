@@ -763,6 +763,13 @@
   word-break: break-all;
 }
 
+.library-import__hint {
+  margin: -6px 0 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: rgba(243, 238, 230, 0.3);
+}
+
 .library-import__actions {
   display: flex;
   flex-wrap: wrap;

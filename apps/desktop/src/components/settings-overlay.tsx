@@ -3,6 +3,7 @@ import type { LibraryLocation } from "@arlt-hifi/shared";
 import { useLibraryImport } from "../hooks/use-library-import";
 import { useLibraryRescan } from "../hooks/use-library-rescan";
 import { assetUrl } from "../lib/asset-url";
+import { getDesktopErrorMessage } from "../lib/desktop-error";
 import { usePlayerStore } from "../store/player-store";
 import { useSettingsStore } from "../store/settings-store";
 import { ManageOverlay } from "./manage-overlay";
@@ -97,13 +98,26 @@ export interface SettingsOverlayProps {
   readonly onClose: () => void;
 }
 
+const LIBRARY_SOURCE_LABELS: Record<LibraryLocation["source"], string> = {
+  default: "默认位置",
+  installer: "安装配置",
+  settings: "应用内设置"
+};
+
+interface LocationStatus {
+  readonly isError: boolean;
+  readonly message: string;
+}
+
 /** 全透明设置浮层：音乐库导入/排序/管理 + 两列材质选择 + 音量 + 置底版权。 */
 export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
   const volume = usePlayerStore((state) => state.volume);
   const setVolume = usePlayerStore((state) => state.setVolume);
   const library = usePlayerStore((state) => state.library);
+  const loadLibrary = usePlayerStore((state) => state.loadLibrary);
   const scenePreset = useSettingsStore((state) => state.scenePreset);
   const setScenePreset = useSettingsStore((state) => state.setScenePreset);
+  const setLibraryRoot = useSettingsStore((state) => state.setLibraryRoot);
   const {
     busy: importBusy,
     cancelImport,
@@ -115,6 +129,8 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
   const { busy: rescanBusy, rescan, state: rescanState } = useLibraryRescan();
   const [manageOpen, setManageOpen] = useState(false);
   const [libraryLocation, setLibraryLocation] = useState<LibraryLocation | null>(null);
+  const [changingLocation, setChangingLocation] = useState(false);
+  const [locationStatus, setLocationStatus] = useState<LocationStatus | null>(null);
   const busy = importBusy || rescanBusy;
   const progressLabel = importBusy
     ? importState.progress
@@ -145,6 +161,48 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
     };
   }, []);
 
+  /** 切换曲库根目录：只改根目录，不迁移文件；旧目录的曲目只是不再显示。 */
+  const changeLibraryLocation = (): void => {
+    const api = window.arltHifiDesktop;
+
+    if (!api || changingLocation || busy) {
+      return;
+    }
+
+    setChangingLocation(true);
+    setLocationStatus(null);
+
+    void api
+      .chooseLibraryDirectory()
+      .then(async (location) => {
+        const unchanged = location.directory === libraryLocation?.directory;
+
+        setLibraryLocation(location);
+
+        // 只在来源真的是应用内设置时同步到 settings.json，避免取消时把安装配置写成设置项。
+        if (location.source === "settings") {
+          setLibraryRoot(location.directory);
+        }
+
+        loadLibrary(await api.loadLibrary());
+        setLocationStatus({
+          isError: false,
+          message: unchanged
+            ? "曲库位置未变更。"
+            : `已切换到 ${location.directory}；旧目录的文件不会迁移，只是不再显示。`
+        });
+      })
+      .catch((error: unknown) => {
+        setLocationStatus({
+          isError: true,
+          message: getDesktopErrorMessage(error, "切换曲库位置失败，请重试。")
+        });
+      })
+      .finally(() => {
+        setChangingLocation(false);
+      });
+  };
+
   return (
     <>
       <div className="settings-overlay__inner">
@@ -158,12 +216,24 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
             <p className="library-import__count">{library.length} 首已托管</p>
           </div>
           {libraryLocation ? (
-            <p className="library-import__path" title={libraryLocation.directory}>
-              曲库目录：{libraryLocation.directory}
-              {libraryLocation.fromInstaller ? "" : "（默认位置，未读到安装配置）"}
-            </p>
+            <>
+              <p className="library-import__path" title={libraryLocation.directory}>
+                曲库目录（{LIBRARY_SOURCE_LABELS[libraryLocation.source]}）：{libraryLocation.directory}
+              </p>
+              <p className="library-import__hint">
+                切换只改根目录，不迁移文件；旧目录里的曲目不再显示，清单记录仍保留。
+              </p>
+            </>
           ) : null}
           <div className="library-import__actions">
+            <button
+              className="library-import__button"
+              disabled={busy || changingLocation || !libraryLocation}
+              onClick={changeLibraryLocation}
+              type="button"
+            >
+              {changingLocation ? "正在选择…" : "更改曲库位置"}
+            </button>
             <button className="library-import__button" disabled={busy} onClick={importFiles} type="button">
               选择音频文件
             </button>
@@ -212,6 +282,14 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
               role="status"
             >
               {rescanState.message}
+            </p>
+          ) : null}
+          {locationStatus ? (
+            <p
+              className={`library-import__status${locationStatus.isError ? " is-error" : ""}`}
+              role="status"
+            >
+              {locationStatus.message}
             </p>
           ) : null}
         </section>

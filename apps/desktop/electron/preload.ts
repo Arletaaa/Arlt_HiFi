@@ -27,6 +27,7 @@ const setTrackCoverChannel = "library:set-track-cover";
 const deleteTrackChannel = "library:delete-track";
 const openLibraryFolderChannel = "library:open-folder";
 const getLibraryLocationChannel = "library:get-location";
+const chooseLibraryDirectoryChannel = "library:choose-directory";
 const libraryChangedChannel = "library:changed";
 const libraryImportProgressChannel = "library:import-progress";
 const loadSettingsChannel = "settings:load";
@@ -72,6 +73,9 @@ const desktopApi: ArltHifiDesktopApi = {
   },
   getLibraryLocation: async (): Promise<LibraryLocation> => {
     return ipcRenderer.invoke(getLibraryLocationChannel) as Promise<LibraryLocation>;
+  },
+  chooseLibraryDirectory: async (): Promise<LibraryLocation> => {
+    return ipcRenderer.invoke(chooseLibraryDirectoryChannel) as Promise<LibraryLocation>;
   },
   onLibraryChanged: (handler: (tracks: readonly Track[]) => void): (() => void) => {
     const listener = (_event: unknown, tracks: readonly Track[]): void => {

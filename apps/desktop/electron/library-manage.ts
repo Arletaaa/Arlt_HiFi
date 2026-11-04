@@ -174,11 +174,13 @@ export const setLibraryTrackCover = async (options: {
   return { entries: replaceTrack(options.entries, track), track };
 };
 
-/** 删除曲目：删副本与自定义封面，条目从清单移除。 */
+/** 删除曲目：把副本移进系统回收站（由主进程注入），删自定义封面，条目从清单移除。 */
 export const removeLibraryTrack = async (options: {
   readonly coversDirectory: string;
   readonly entries: readonly LibraryEntry[];
   readonly trackId: string;
+  /** 注入 shell.trashItem：库模块不直接依赖 Electron，单测可传替身。 */
+  readonly trashFile?: (filePath: string) => Promise<void>;
 }): Promise<LibraryMutation | null> => {
   const entry = findEntry(options.entries, options.trackId);
 
@@ -186,7 +188,11 @@ export const removeLibraryTrack = async (options: {
     return null;
   }
 
-  await rm(entry.track.filePath, { force: true });
+  if (options.trashFile) {
+    await options.trashFile(entry.track.filePath);
+  } else {
+    await rm(entry.track.filePath, { force: true });
+  }
 
   if (isOverrideCover(options.coversDirectory, entry.track.coverPath)) {
     await rm(entry.track.coverPath, { force: true });

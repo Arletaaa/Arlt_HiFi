@@ -10,12 +10,12 @@ Arlt-HiFi 是一款面向本地 HiFi 音乐播放体验的 Electron 桌面音乐
 
 ## 产品方向
 
-- 托管曲库：导入的 `flac`、`wav`、`mp3`、`m4a`、`ogg` 复制到 `userData/library/<artist>/<album>/<title>.<ext>`，按 `(大小, 时长, 前 256KB SHA-1)` 去重；重命名 / 设封面 / 删除只作用于副本。
+- 托管曲库：导入的 `flac`、`wav`、`mp3`、`m4a`、`ogg` 复制到当前曲库根目录（默认 `userData/library`，可在设置里更改）的 `<artist>/<album>/<title>.<ext>`，按 `(大小, 时长, 前 256KB SHA-1)` 去重；重命名 / 设封面 / 删除只作用于副本，删除会把文件移进系统回收站。
 - 3D 画廊：唯一主视图，实时渲染的单排 CD 货架；左右拖动限制在 CD 列表内，越界会带阻尼回弹。点击 CD 打开详情的透明宝石盒，可开盖、拖出盘片；右侧 CD 唱片机支持吸附盘片、起转和唱臂落针播放。场景是"曲库本身"，不是装饰舞台——判定与边界见 [ADR 005](docs/decisions/005-scene-gallery.md)。
 - 搜索与排序：标题 / 艺术家 / 时长 / 导入时间排序；搜索框列出匹配曲目，回车或点击飞到对应 CD 并抽出高亮。
 - 播放 MVP：使用 `HTMLAudioElement` 播放托管曲目。把盘片放上唱片机、落下唱臂即开始播放，抬起唱臂即暂停；详情页左下角的播放条提供可拖动进度、上一首 / 播放 / 下一首，以及顺序 / 循环 / 随机三种模式。播放键与唱片机 Start/Stop 共用同一段逻辑，循环作用于整张 CD；右下角音量环支持拖拽 / 滚轮 / 键盘。
 - CD 与多曲：一张 CD 对应一个专辑组，组内曲目按碟号 / 音轨号排序；详情播放条只在这张 CD 内切歌。归组规则与导入/管理计划见 [CD 模型](docs/product/cd-album-model.md)。
-- 设置：场景材质预设（台面 / 台底 / 墙面）与光效（晨光 / 夜色 / 聚光 / 星空）、曲库导入与管理、音量；播放模式已移到详情播放条，管理弹窗可编辑 CD 信息并批量合并多首为一张 CD。
+- 设置：场景材质预设（台面 / 台底 / 墙面）与光效（晨光 / 夜色 / 聚光 / 星空）、曲库导入与管理、曲库位置（应用内设置 / 安装配置 / 默认位置）、音量；播放模式已移到详情播放条，管理弹窗可编辑 CD 信息并批量合并多首为一张 CD。
 - 安全边界：React 通过 preload API 与 Electron 主进程通信，不直接访问 Node/Electron；本地音频与封面通过受控媒体协议读取。
 - 素材署名：CD 盒与唱片机模型均为 CC-BY 4.0，署名入口在设置浮层底部。
 
@@ -41,11 +41,12 @@ Arlt-HiFi 是一款面向本地 HiFi 音乐播放体验的 Electron 桌面音乐
 pnpm install
 pnpm build
 pnpm --filter @arlt-hifi/desktop dist   # 产物：apps/desktop/release/arlt-hifi-<version>-setup.exe
-Get-FileHash apps/desktop/release/arlt-hifi-1.0.1-setup.exe -Algorithm SHA256
+Get-FileHash apps/desktop/release/arlt-hifi-1.0.2-setup.exe -Algorithm SHA256
 ```
 
-- 安装位置与数据位置是两回事：安装向导里可以分别选择「软件安装位置」和「曲库位置」，两者都会在你选择的路径下**新建文件夹**（`Arlt-HiFi` 与 `Arlt-HiFi Library`），并实时显示最终路径。曲库导入后会把音频复制进 `Arlt-HiFi Library`，卸载不会删除它；设置、`library.json` 与封面仍在 `%APPDATA%\Arlt-HiFi`。
-- 版本记录见 [CHANGELOG.md](CHANGELOG.md)，当前版本的发布说明见 [docs/releases/v1.0.1.md](docs/releases/v1.0.1.md)。
+- 曲库位置可以在应用内更改：设置 → 音乐库 →「更改曲库位置」。优先级为 `settings.json.libraryRoot` > 安装器 `install.ini`（userData → 安装目录）> 默认 `%APPDATA%\Arlt-HiFi\library`；安装向导里的曲库选择只作为首次默认值。切换**只改根目录、不迁移文件**，旧目录里的曲目不再显示（清单记录保留，切回即可恢复）。目标目录已有音频时会先警告，从曲库目录内部导入会被拒绝；删除曲目走回收站。
+- 安装位置与数据位置是两回事：安装向导里可以分别选择「软件安装位置」和「曲库位置」，两者都会在你选择的路径下**新建文件夹**（`Arlt-HiFi` 与 `Arlt-HiFi Library`），并实时显示最终路径。曲库导入后会把音频复制进曲库目录，卸载不会删除它；设置、`library.json` 与封面仍在 `%APPDATA%\Arlt-HiFi`。
+- 版本记录见 [CHANGELOG.md](CHANGELOG.md)，当前版本的发布说明见 [docs/releases/v1.0.2.md](docs/releases/v1.0.2.md)。
 - 许可证：[MIT](LICENSE)（第三方模型/贴图按各自许可，见 [CREDITS](apps/desktop/public/textures/CREDITS.md)）。
 - 交互参考：[The Complete Shelf](https://github.com/MengTo/complete-shelf)（MengTo），仅借鉴连续货架与抽取详情的交互思路，未使用其代码或素材。
 
@@ -74,7 +75,7 @@ pnpm --filter @arlt-hifi/desktop build:web   # 产物：apps/desktop/dist
 
 ## 当前进度
 
-v1.0.1 已发布：单排 CD 货架 + CD 盒 + 唱片机 + CD 详情信息条、搜索/进度/键盘、曲库导入与管理、标签补齐、导入取消/续传、媒体 seek 均已完成；`typecheck` / `test`（desktop 180 + shared 11）/ `build` / `build:web` 全绿。收藏、长廊/Bay、列表降级不在 v1.0；后续拆文件、性能收口与标签写回不列入本次交付。[收尾清单](docs/product/next-steps.md)、[roadmap](docs/product/roadmap.md)。
+v1.0.2 已发布：单排 CD 货架 + CD 盒 + 唱片机 + CD 详情信息条、搜索/进度/键盘、曲库导入与管理、标签补齐、导入取消/续传、媒体 seek 均已完成；曲库位置改为应用内设置，删除曲目进回收站。`typecheck` / `test`（desktop 192 + shared 11）/ `build` / `build:web` 全绿。收藏、长廊/Bay、列表降级不在 v1.0；后续拆文件、性能收口与标签写回不列入本次交付。[收尾清单](docs/product/next-steps.md)、[roadmap](docs/product/roadmap.md)。
 
 ## 质量检查
 

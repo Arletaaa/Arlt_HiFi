@@ -31,11 +31,16 @@ const describeImport = (result: LibraryImportResult): string => {
   }
 
   const duplicates = countReason(result.skipped, "duplicate");
+  const inLibrary = countReason(result.skipped, "in-library");
   const unsupported = countReason(result.skipped, "unsupported");
   const failed = countReason(result.skipped, "failed");
 
   if (duplicates > 0) {
     parts.push(`已存在 ${duplicates} 首`);
+  }
+
+  if (inLibrary > 0) {
+    parts.push(`已在曲库里 ${inLibrary} 首（不重复导入）`);
   }
 
   if (unsupported > 0) {

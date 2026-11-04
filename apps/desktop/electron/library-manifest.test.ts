@@ -83,6 +83,19 @@ describe("library manifest filtering", () => {
 
     expect(filterEntriesByLibraryRoot(entries, root).map((entry) => entry.track.filePath)).toEqual([inside]);
   });
+
+  it("keeps the other root's entries so switching back restores them", () => {
+    const base = join(tmpdir(), "arlt-hifi-roots");
+    const firstRoot = join(base, "Library A");
+    const secondRoot = join(base, "Library B");
+    const firstFile = join(firstRoot, "Blue Hour.flac");
+    const secondFile = join(secondRoot, "Neon Tide.flac");
+    const entries = [sampleEntry(firstFile), sampleEntry(secondFile)];
+
+    expect(filterEntriesByLibraryRoot(entries, firstRoot).map((entry) => entry.track.filePath)).toEqual([firstFile]);
+    expect(filterEntriesByLibraryRoot(entries, secondRoot).map((entry) => entry.track.filePath)).toEqual([secondFile]);
+    expect(entries.map((entry) => entry.track.filePath)).toEqual([firstFile, secondFile]);
+  });
 });
 
 describe("library manifest persistence", () => {

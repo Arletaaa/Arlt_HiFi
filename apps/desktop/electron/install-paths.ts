@@ -1,11 +1,9 @@
 import { readFile } from "node:fs/promises";
-import { isAbsolute, join } from "node:path";
+import { join } from "node:path";
+import { normalizeLibraryRoot } from "./library-root.js";
 
 /** NSIS 安装器把用户选择的曲库目录写在 userData 下的这个文件里。 */
 export const installConfigFileName = "install.ini";
-
-/** Windows 盘符路径（测试机不一定是 Windows，所以不只用 path.isAbsolute）。 */
-const isWindowsAbsolutePath = (value: string): boolean => /^[a-zA-Z]:[\\/]/u.test(value) || value.startsWith("\\\\");
 
 /** 只解析 `[paths]` 下的 `libraryRoot`；其它键与节忽略（纯函数，可单测）。 */
 export const parseInstalledLibraryRoot = (contents: string): string | null => {
@@ -19,7 +17,7 @@ export const parseInstalledLibraryRoot = (contents: string): string | null => {
       continue;
     }
 
-    return isAbsolute(value) || isWindowsAbsolutePath(value) ? value : null;
+    return normalizeLibraryRoot(value);
   }
 
   return null;

@@ -1,5 +1,5 @@
 import electron from "electron";
-import { watch, type FSWatcher } from "node:fs";
+import { existsSync, watch, type FSWatcher } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,6 +7,7 @@ import type {
   AppSettings,
   AudioFileSelectionResult,
   FolderImportResult,
+  ImportSkippedFile,
   LibraryImportProgress,
   LibraryImportResult,
   LibraryRescanResult,
@@ -18,6 +19,13 @@ import { readInstalledLibraryRoot } from "./install-paths.js";
 import { importAudioFiles } from "./library-import.js";
 import { applyLibraryEdits, editLibraryTrack, removeLibraryTrack, renameLibraryTrack, setLibraryTrackCover } from "./library-manage.js";
 import { filterEntriesByLibraryRoot, pruneMissingEntries, readLibraryManifest, writeLibraryManifest, type LibraryManifest } from "./library-manifest.js";
+import {
+  directoryContainsAudioFiles,
+  isPathInside,
+  normalizeLibraryRoot,
+  resolveLibraryRoot,
+  type ResolvedLibraryRoot
+} from "./library-root.js";
 import { createMediaProtocolAccess, registerMediaProtocolPrivileges } from "./media-protocol.js";
 import { collectAudioFilePaths } from "./music-scanner.js";
 import { rescanLibraryEntries } from "./library-rescan.js";
@@ -45,6 +53,7 @@ const setTrackCoverChannel = "library:set-track-cover";
 const deleteTrackChannel = "library:delete-track";
 const openLibraryFolderChannel = "library:open-folder";
 const getLibraryLocationChannel = "library:get-location";
+const chooseLibraryDirectoryChannel = "library:choose-directory";
 const libraryChangedChannel = "library:changed";
 const libraryImportProgressChannel = "library:import-progress";
 const loadSettingsChannel = "settings:load";
@@ -70,10 +79,39 @@ const getActiveWindow = (): electron.BrowserWindow | null =>
   BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null;
 
 const getCoversDirectory = (): string => join(app.getPath("userData"), "covers");
-// 安装器写下的曲库目录优先；开发模式没有安装记录时退回 userData/library。
+// 优先级：settings.libraryRoot > 安装器 install.ini > userData/library。
 let installedLibraryRoot: string | null = null;
-const getLibraryDirectory = (): string => installedLibraryRoot ?? join(app.getPath("userData"), "library");
+let libraryRoot: ResolvedLibraryRoot = { directory: join(app.getPath("userData"), "library"), source: "default" };
+const getLibraryDirectory = (): string => libraryRoot.directory;
+const getLibraryLocation = (): LibraryLocation => ({ directory: libraryRoot.directory, source: libraryRoot.source });
 const getLibraryManifestPath = (): string => join(app.getPath("userData"), "library.json");
+
+/** 删除走系统回收站；文件已被手工删掉时仍允许移除条目。 */
+const trashFile = async (filePath: string): Promise<void> => {
+  try {
+    await shell.trashItem(filePath);
+  } catch (error) {
+    if (!existsSync(filePath)) {
+      return;
+    }
+
+    throw error;
+  }
+};
+
+/** 按当前 settings / install.ini 重新解析根目录；返回是否发生变化。 */
+const syncLibraryRoot = (settings: AppSettings): boolean => {
+  const next = resolveLibraryRoot({
+    installedRoot: installedLibraryRoot,
+    settingsRoot: settings.libraryRoot,
+    userDataDirectory: app.getPath("userData")
+  });
+  const changed = next.directory !== libraryRoot.directory;
+
+  libraryRoot = next;
+
+  return changed;
+};
 
 /** 读取完整清单（保留其它曲库目录下的条目，切换目录时不丢记录）。 */
 const readLibraryManifestForCurrentRoot = async (manifestPath: string): Promise<LibraryManifest> => {
@@ -96,6 +134,14 @@ const showDialog = async (
   return activeWindow ? dialog.showOpenDialog(activeWindow, options) : dialog.showOpenDialog(options);
 };
 
+const showMessageBox = async (
+  options: electron.MessageBoxOptions
+): Promise<electron.MessageBoxReturnValue> => {
+  const activeWindow = getActiveWindow();
+
+  return activeWindow ? dialog.showMessageBox(activeWindow, options) : dialog.showMessageBox(options);
+};
+
 /** 读取托管曲库：以 manifest 为准，顺手剔除已被手工删除的文件。 */
 const loadManagedLibrary = async (): Promise<readonly Track[]> => {
   const manifestPath = getLibraryManifestPath();
@@ -114,6 +160,19 @@ const loadManagedLibrary = async (): Promise<readonly Track[]> => {
   return tracks;
 };
 
+const broadcastLibrary = (tracks: readonly Track[]): void => {
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed()) {
+      window.webContents.send(libraryChangedChannel, tracks);
+    }
+  }
+};
+
+/** 重新读取当前根目录的曲库并推给窗口（切换根目录后立即生效）。 */
+const refreshLibraryAndBroadcast = async (): Promise<void> => {
+  broadcastLibrary(await loadManagedLibrary());
+};
+
 /** 外部改动了托管目录后，稍等文件操作稳定再重读清单并通知窗口。 */
 const scheduleLibraryChanged = (): void => {
   if (activeImportController) {
@@ -127,15 +186,7 @@ const scheduleLibraryChanged = (): void => {
   libraryRefreshTimer = setTimeout(() => {
     libraryRefreshTimer = null;
 
-    void loadManagedLibrary()
-      .then((tracks) => {
-        for (const window of BrowserWindow.getAllWindows()) {
-          if (!window.isDestroyed()) {
-            window.webContents.send(libraryChangedChannel, tracks);
-          }
-        }
-      })
-      .catch(() => undefined);
+    void refreshLibraryAndBroadcast().catch(() => undefined);
   }, 600);
 };
 
@@ -157,6 +208,19 @@ const startLibraryWatcher = async (): Promise<void> => {
   }
 };
 
+/** 换曲库根目录后把监听器指到新目录。 */
+const restartLibraryWatcher = async (): Promise<void> => {
+  libraryWatcher?.close();
+  libraryWatcher = null;
+
+  if (libraryRefreshTimer) {
+    clearTimeout(libraryRefreshTimer);
+    libraryRefreshTimer = null;
+  }
+
+  await startLibraryWatcher();
+};
+
 /** 复制入库并落盘 manifest；新文件立刻放行给媒体协议，不用重启。 */
 const importPaths = async (
   event: electron.IpcMainInvokeEvent,
@@ -172,11 +236,22 @@ const importPaths = async (
   try {
     const manifestPath = getLibraryManifestPath();
     const manifest = await readLibraryManifestForCurrentRoot(manifestPath);
+    const libraryDirectory = getLibraryDirectory();
+    // 从曲库目录内部再导入只会生成 ` (2)` 副本，直接跳过并计入 skipped。
+    const blockedSkipped = filePaths
+      .filter((filePath) => isPathInside(libraryDirectory, filePath))
+      .map((filePath): ImportSkippedFile => ({ filePath, reason: "in-library" }));
+    const acceptedFilePaths = filePaths.filter((filePath) => !isPathInside(libraryDirectory, filePath));
+
+    if (acceptedFilePaths.length === 0) {
+      return { imported: [], skipped: blockedSkipped };
+    }
+
     const outcome = await importAudioFiles({
       coversDirectory: getCoversDirectory(),
       entries: manifest.entries,
-      filePaths,
-      libraryDirectory: getLibraryDirectory(),
+      filePaths: acceptedFilePaths,
+      libraryDirectory,
       signal: controller.signal,
       onProgress: (completed, total) => {
         if (event.sender.isDestroyed()) {
@@ -203,7 +278,7 @@ const importPaths = async (
       imported: outcome.imported,
       interrupted: controller.signal.aborted,
       remainingFilePaths: outcome.remainingFilePaths,
-      skipped: outcome.skipped
+      skipped: [...blockedSkipped, ...outcome.skipped]
     };
   } finally {
     if (activeImportController === controller) {
@@ -420,7 +495,8 @@ ipcMain.handle(deleteTrackChannel, async (_event, rawTrackId: unknown): Promise<
   const outcome = await removeLibraryTrack({
     coversDirectory: getCoversDirectory(),
     entries: manifest.entries,
-    trackId: rawTrackId
+    trackId: rawTrackId,
+    trashFile
   });
 
   if (!outcome) {
@@ -438,10 +514,67 @@ ipcMain.handle(loadSettingsChannel, async (): Promise<AppSettings> => {
 });
 
 ipcMain.handle(saveSettingsChannel, async (_event, next: unknown): Promise<AppSettings> => {
-  const settings = mergeSettings(next);
+  // 曲库根目录只由 library:choose-directory 改写；这里保留磁盘上的值，
+  // 避免渲染层一份旧设置把刚切换的目录覆盖回去。
+  const current = await readSettings(app.getPath("userData"));
+  const settings = { ...mergeSettings(next), libraryRoot: current.libraryRoot };
+
   await writeSettings(app.getPath("userData"), settings);
 
+  if (syncLibraryRoot(settings)) {
+    await restartLibraryWatcher();
+  }
+
   return settings;
+});
+
+ipcMain.handle(chooseLibraryDirectoryChannel, async (): Promise<LibraryLocation> => {
+  const result = await showDialog({
+    title: "选择曲库目录",
+    properties: ["openDirectory", "createDirectory"],
+    defaultPath: getLibraryDirectory()
+  });
+  const selected = result.filePaths[0] ?? null;
+
+  if (result.canceled || !selected) {
+    return getLibraryLocation();
+  }
+
+  const directory = normalizeLibraryRoot(selected);
+
+  if (!directory) {
+    throw new Error("请选择绝对路径的目录。");
+  }
+
+  if (directory === getLibraryDirectory()) {
+    return getLibraryLocation();
+  }
+
+  // 目标目录已有音频时提示：导入是复制，但重命名/删除会直接作用在这些文件上。
+  if (await directoryContainsAudioFiles(directory)) {
+    const confirmation = await showMessageBox({
+      type: "warning",
+      buttons: ["继续切换", "取消"],
+      cancelId: 1,
+      defaultId: 1,
+      message: "该目录已有音频文件",
+      detail: "导入会复制副本，重命名/删除会作用于这些文件。\n切换只改曲库根目录，不会迁移现有文件。"
+    });
+
+    if (confirmation.response !== 0) {
+      return getLibraryLocation();
+    }
+  }
+
+  const settings = await readSettings(app.getPath("userData"));
+  const next = { ...settings, libraryRoot: directory };
+
+  await writeSettings(app.getPath("userData"), next);
+  syncLibraryRoot(next);
+  await restartLibraryWatcher();
+  await refreshLibraryAndBroadcast();
+
+  return getLibraryLocation();
 });
 
 ipcMain.handle(openLibraryFolderChannel, async (): Promise<void> => {
@@ -455,10 +588,7 @@ ipcMain.handle(openLibraryFolderChannel, async (): Promise<void> => {
   }
 });
 
-ipcMain.handle(getLibraryLocationChannel, async (): Promise<LibraryLocation> => ({
-  directory: getLibraryDirectory(),
-  fromInstaller: installedLibraryRoot !== null
-}));
+ipcMain.handle(getLibraryLocationChannel, async (): Promise<LibraryLocation> => getLibraryLocation());
 
 const createWindow = async (): Promise<void> => {
   const window = new BrowserWindow({
@@ -490,6 +620,7 @@ app.whenReady().then(async () => {
   // 安装目录也放了一份 install.ini，避免 $APPDATA 指向其他账户时读不到配置。
   const installDirectory = app.isPackaged ? dirname(process.resourcesPath) : null;
   installedLibraryRoot = await readInstalledLibraryRoot(app.getPath("userData"), installDirectory);
+  syncLibraryRoot(await readSettings(app.getPath("userData")));
 
   mediaProtocolAccess.registerHandler();
   appProtocolAccess.registerHandler();

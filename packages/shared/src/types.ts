@@ -81,6 +81,8 @@ export const defaultScenePreset: ScenePreset = {
 export interface AppSettings {
   /** CD 的手动顺序（GalleryGroup id 列表）；仅 librarySort === "manual" 时生效。 */
   readonly cdOrder: readonly string[];
+  /** 应用内选择的曲库根目录；null = 沿用安装配置 / 默认位置。 */
+  readonly libraryRoot: string | null;
   readonly librarySort: LibrarySortKey;
   readonly motionTier: MotionTier;
   readonly playbackMode: PlaybackMode;
@@ -91,6 +93,7 @@ export interface AppSettings {
 
 export const defaultAppSettings: AppSettings = {
   cdOrder: [],
+  libraryRoot: null,
   librarySort: "title",
   motionTier: "standard",
   playbackMode: "sequential",

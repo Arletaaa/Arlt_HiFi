@@ -46,6 +46,7 @@ const demoTracks: readonly Track[] = [
 
 const webPreviewImportMessage = "网页预览无法导入音乐，请使用 Electron 桌面应用。";
 const webPreviewManageMessage = "网页预览无法管理曲库，请使用 Electron 桌面应用。";
+const webPreviewLocationMessage = "网页预览无法更改曲库位置，请使用 Electron 桌面应用。";
 
 const rejectWebPreviewImport = async (): Promise<never> => {
   throw new Error(webPreviewImportMessage);
@@ -55,9 +56,14 @@ const rejectWebPreviewManage = async (): Promise<never> => {
   throw new Error(webPreviewManageMessage);
 };
 
+const rejectWebPreviewLocation = async (): Promise<never> => {
+  throw new Error(webPreviewLocationMessage);
+};
+
 const createDemoApi = (): ArltHifiDesktopApi => ({
   platform: "win32",
-  getLibraryLocation: async () => ({ directory: "（网页预览不托管曲库）", fromInstaller: false }),
+  getLibraryLocation: async () => ({ directory: "（网页预览不托管曲库）", source: "default" }),
+  chooseLibraryDirectory: rejectWebPreviewLocation,
   selectAudioFiles: rejectWebPreviewImport,
   importAudioFiles: rejectWebPreviewImport,
   importAudioFolder: rejectWebPreviewImport,

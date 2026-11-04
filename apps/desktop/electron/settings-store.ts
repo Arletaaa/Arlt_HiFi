@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { defaultAppSettings, defaultScenePreset, type AppSettings, type LibrarySortKey, type MotionTier, type PlaybackMode, type ScenePreset, type ThemeMode } from "@arlt-hifi/shared";
+import { normalizeLibraryRoot } from "./library-root.js";
 
 const settingsFileName = "settings.json";
 
@@ -90,6 +91,7 @@ export const mergeSettings = (raw: unknown): AppSettings => {
 
   return {
     cdOrder: readCdOrder(record.cdOrder),
+    libraryRoot: normalizeLibraryRoot(record.libraryRoot),
     librarySort: isLibrarySortKey(record.librarySort) ? record.librarySort : defaultAppSettings.librarySort,
     motionTier: isMotionTier(record.motionTier) ? record.motionTier : defaultAppSettings.motionTier,
     playbackMode: normalizePlaybackMode(record.playbackMode),

@@ -19,6 +19,7 @@ describe("settings merging", () => {
 
     expect(merged).toEqual({
       cdOrder: [],
+      libraryRoot: null,
       librarySort: "duration",
       motionTier: "rich",
       playbackMode: "shuffle",
@@ -26,6 +27,14 @@ describe("settings merging", () => {
       theme: "light",
       volume: 55
     });
+  });
+
+  it("keeps a valid in-app library root and drops invalid ones", () => {
+    expect(mergeSettings({ libraryRoot: "E:\\Music\\Library" }).libraryRoot).toBe("E:\\Music\\Library");
+    expect(mergeSettings({ libraryRoot: "relative\\library" }).libraryRoot).toBeNull();
+    expect(mergeSettings({ libraryRoot: "" }).libraryRoot).toBeNull();
+    expect(mergeSettings({ libraryRoot: 42 }).libraryRoot).toBeNull();
+    expect(mergeSettings({}).libraryRoot).toBeNull();
   });
 
   it("keeps a manual CD order and drops junk entries", () => {

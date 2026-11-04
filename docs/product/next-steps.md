@@ -36,6 +36,7 @@
 - 1.0.0 结果：`apps/desktop/release/arlt-hifi-1.0.0-setup.exe`（NSIS 安装包），102,769,008 B；未签名；`FileVersion` / `ProductVersion` 均为 `1.0.0`。
 - SHA-256：`b3a62481ee694e61b67d98c95911c6519f9cc412e03137e263b7588adf496b18`。
 - 安装页：`apps/desktop/build/installer.nsh` 自定义页同时选择安装位置与曲库位置，两者都在所选路径下新建文件夹并实时预览；安装器把曲库路径写入 `userData/install.ini`，主进程 `install-paths.ts` 读取后作为导入目标。
+- 1.0.2 起曲库位置可在应用内更改：设置 → 音乐库 → 「更改曲库位置」写入 `settings.json.libraryRoot`，优先级为 `settings.libraryRoot` > `install.ini` > `%APPDATA%\Arlt-HiFi\library`；安装页只作为首次默认值，切换不迁移文件。
 - 构建修正：`electron` 移到 `devDependencies`，新增 `electron-builder@26.18.0` 与 `author`；`dist` 脚本不再硬编码 `--win portable`，目标由 `electron-builder.yml` 决定；本机直连 GitHub 不可用时用 `ELECTRON_BUILDER_BINARIES_MIRROR` 走镜像。
 
 ### P0-3 安装包冒烟
@@ -95,6 +96,7 @@
 - [x] 切回窗口刷新曲库：窗口重新获得焦点时重新读取 manifest，外部删改曲目无需重启。
 - [x] 文件夹监听：托管目录中的文件被外部删除/移动后自动重读清单并推送；切回窗口刷新也已接入。
 - [x] 导入取消 + 断点续传：取消时返回未处理文件，设置里可点「继续导入 N 首」；已复制的曲目保留。
+- [x] 曲库位置可配置：设置页切换根目录（只改根目录、不迁移文件），旧条目保留；非空目录与“从曲库内部导入”都会拦截/提示；删除曲目进回收站。
 - [ ] 重命名写回标签（需要 tag writer，单独评估）。
 
 ## 4. P2：工程与打磨

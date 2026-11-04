@@ -92,7 +92,7 @@ FunctionEnd
   Page custom ArltPathsPageCreate ArltPathsPageLeave
 
   Function ArltPathsPageCreate
-    !insertmacro MUI_HEADER_TEXT "选择安装位置" "安装程序会在你选择的路径下新建文件夹；曲库目录存放导入后复制的音乐，卸载时不会删除。"
+    !insertmacro MUI_HEADER_TEXT "选择安装位置" "安装程序会在你选择的路径下新建文件夹；曲库目录存放导入后复制的音乐，卸载时不会删除。安装后可在应用内更改曲库位置。"
 
     ; 每次显示都从 $INSTDIR 重新推导，切换安装模式后仍然正确。
     StrCpy $arltInstallTarget "$INSTDIR"

@@ -21,7 +21,7 @@ export interface AudioFileSelectionResult {
 }
 
 /** 单首曲目没进库的原因。 */
-export type ImportSkipReason = "duplicate" | "unsupported" | "failed";
+export type ImportSkipReason = "duplicate" | "in-library" | "unsupported" | "failed";
 
 export interface ImportSkippedFile {
   readonly filePath: string;
@@ -77,17 +77,21 @@ export interface TrackEdit {
   readonly trackId: string;
 }
 
-/** 当前曲库目录与来源（安装器配置或回退到默认位置）。 */
+/** 曲库根目录的来源：应用内设置 > 安装器配置 > 默认位置。 */
+export type LibraryLocationSource = "settings" | "installer" | "default";
+
+/** 当前曲库目录与来源（应用内设置 / 安装器配置 / 回退到默认位置）。 */
 export interface LibraryLocation {
   readonly directory: string;
-  /** true = 来自安装器写下的 install.ini；false = 回退到 userData/library。 */
-  readonly fromInstaller: boolean;
+  readonly source: LibraryLocationSource;
 }
 
 export interface ArltHifiDesktopApi {
   readonly platform: DesktopPlatform;
   /** 当前曲库目录与来源，用于设置页展示与排查。 */
   readonly getLibraryLocation: () => Promise<LibraryLocation>;
+  /** 选择新的曲库根目录（只改根目录，不迁移文件）；取消时返回当前值。 */
+  readonly chooseLibraryDirectory: () => Promise<LibraryLocation>;
   /** 打开系统多选文件对话框，只选不复制。 */
   readonly selectAudioFiles: () => Promise<AudioFileSelectionResult>;
   /** 把选中的文件复制进 userData/library 并写库。 */
@@ -108,7 +112,7 @@ export interface ArltHifiDesktopApi {
   readonly applyTrackEdits: (edits: readonly TrackEdit[]) => Promise<readonly Track[]>;
   /** 选择图片并写为该曲目的封面；取消返回 null。 */
   readonly setTrackCover: (trackId: string) => Promise<Track | null>;
-  /** 删除副本文件并从曲库移除。 */
+  /** 把副本文件移到系统回收站，并从曲库移除条目。 */
   readonly deleteTrack: (trackId: string) => Promise<boolean>;
   /** 用系统文件管理器打开托管音频目录。 */
   readonly openLibraryFolder: () => Promise<void>;

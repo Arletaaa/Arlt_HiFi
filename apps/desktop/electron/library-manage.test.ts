@@ -384,6 +384,30 @@ describe("removing library tracks", () => {
     await expect(fileExists(coverPath)).resolves.toBe(false);
   });
 
+  it("hands the copy to the injected trash function instead of deleting it", async () => {
+    const root = await createTempDirectory();
+    const coversDirectory = join(root, "covers");
+    const libraryFile = join(root, "library", "Song.flac");
+    const entries = [createEntry(createTrack(libraryFile))];
+    const trashed: string[] = [];
+
+    await mkdir(join(root, "library"), { recursive: true });
+    await writeFile(libraryFile, "audio");
+
+    const outcome = await removeLibraryTrack({
+      coversDirectory,
+      entries,
+      trackId: `file://${libraryFile}`,
+      trashFile: async (filePath) => {
+        trashed.push(filePath);
+      }
+    });
+
+    expect(trashed).toEqual([libraryFile]);
+    expect(outcome?.entries).toHaveLength(0);
+    await expect(fileExists(libraryFile)).resolves.toBe(true);
+  });
+
   it("returns null for unknown tracks", async () => {
     await expect(
       removeLibraryTrack({ coversDirectory: "C:\\covers", entries: [], trackId: "file://missing" })
