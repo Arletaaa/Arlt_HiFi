@@ -104,13 +104,3 @@ pnpm --filter @arlt-hifi/desktop dist:offline  # 无签名/无网络时快速出
 
 - [The Complete Shelf](https://github.com/MengTo/complete-shelf)（MengTo）：连续 3D 货架、从货架抽取到详情视图的交互参考。本项目的货架漫游、开盒与取盘交互受其启发，但代码为 React Three Fiber 独立实现，未复制其代码，也未使用其素材；该仓库不随本项目分发。
 - [ambientCG](https://ambientcg.com)（CC0 贴图）、CD 盒与唱片机模型的作者（CC-BY 4.0），详见 [CREDITS](apps/desktop/public/textures/CREDITS.md)。
-
-## 当前阶段约束
-
-- TypeScript 使用 strict mode。
-- 不使用 `any`，除非用注释解释原因。
-- 当前播放 MVP 使用 `HTMLAudioElement`，不接入 Rust audio-core。
-- 3D 场景是"曲库本身"：每个 3D 元素都必须对应真实曲目或真实播放状态。
-- 唱片机的转盘、唱臂、状态灯必须映射真实播放/电机状态，不做纯装饰动画。
-- 不做装饰性右侧舞台、角色立绘、Live2D、MV 或视频背景。
-- 场景代码只运行在渲染层，封面图片只通过受控媒体协议读取。
