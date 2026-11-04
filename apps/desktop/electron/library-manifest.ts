@@ -120,3 +120,37 @@ export const pruneMissingEntries = async (
 
   return { entries: existing, removed: entries.length - existing.length };
 };
+
+/**
+ * 只清理当前根目录下已丢失的文件；其它曲库目录的条目原样保留。
+ * 换回旧根目录时会再清自己那一份，不需要在后台读别的目录。
+ */
+export const pruneMissingEntriesUnderRoot = async (
+  entries: readonly LibraryEntry[],
+  libraryRoot: string
+): Promise<{ readonly entries: readonly LibraryEntry[]; readonly removed: number }> => {
+  const visible = filterEntriesByLibraryRoot(entries, libraryRoot);
+  const pruned = await pruneMissingEntries(visible);
+
+  if (pruned.removed === 0) {
+    return { entries, removed: 0 };
+  }
+
+  const keptIds = new Set(pruned.entries.map((entry) => entry.track.id));
+  const visibleIds = new Set(visible.map((entry) => entry.track.id));
+
+  return {
+    entries: entries.filter((entry) => !visibleIds.has(entry.track.id) || keptIds.has(entry.track.id)),
+    removed: pruned.removed
+  };
+};
+
+/** 用重扫结果替换同 id 条目；其它曲库根目录的条目原样保留。 */
+export const mergeEntryUpdates = (
+  entries: readonly LibraryEntry[],
+  updated: readonly LibraryEntry[]
+): readonly LibraryEntry[] => {
+  const updatedById = new Map(updated.map((entry) => [entry.track.id, entry]));
+
+  return entries.map((entry) => updatedById.get(entry.track.id) ?? entry);
+};

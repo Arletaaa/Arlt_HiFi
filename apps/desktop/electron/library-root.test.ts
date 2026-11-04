@@ -2,8 +2,11 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import type { Track } from "@arlt-hifi/shared";
+import type { LibraryEntry } from "./library-manifest.js";
 import {
   directoryContainsAudioFiles,
+  inspectLibraryDirectory,
   isPathInside,
   normalizeLibraryRoot,
   resolveLibraryRoot
@@ -16,6 +19,24 @@ const createTempDirectory = async (): Promise<string> => {
   temporaryDirectories.push(directory);
 
   return directory;
+};
+
+const createEntry = (filePath: string): LibraryEntry => {
+  const track: Track = {
+    album: "Terrace EP",
+    artist: "Aoi Kaze",
+    bitDepth: 24,
+    coverPath: null,
+    durationSeconds: 214,
+    filePath,
+    id: `file://${filePath}`,
+    metadataSource: "tags",
+    quality: "hi-res",
+    sampleRateHz: 96000,
+    title: "Blue Hour"
+  };
+
+  return { headSha1: "a".repeat(40), importedAt: "2026-11-04T00:00:00.000Z", size: 1234, track };
 };
 
 afterEach(async () => {
@@ -100,5 +121,42 @@ describe("directoryContainsAudioFiles", () => {
 
     await expect(directoryContainsAudioFiles(root)).resolves.toBe(false);
     await expect(directoryContainsAudioFiles(join(root, "missing"))).resolves.toBe(false);
+  });
+});
+
+describe("inspectLibraryDirectory", () => {
+  it("accepts a directory that already has manifest entries", async () => {
+    const root = await createTempDirectory();
+    await mkdir(join(root, "Aoi Kaze", "Terrace EP"), { recursive: true });
+
+    await expect(
+      inspectLibraryDirectory({
+        directory: root,
+        entries: [createEntry(join(root, "Aoi Kaze", "Terrace EP", "Blue Hour.flac"))]
+      })
+    ).resolves.toBe("registered");
+  });
+
+  it("rejects a plain music folder that was never imported into the app", async () => {
+    const root = await createTempDirectory();
+    await mkdir(join(root, "Aoi Kaze", "Terrace EP"), { recursive: true });
+    await writeFile(join(root, "Aoi Kaze", "Terrace EP", "Blue Hour.flac"), "audio");
+
+    await expect(inspectLibraryDirectory({ directory: root, entries: [] })).resolves.toBe("audio");
+    await expect(
+      inspectLibraryDirectory({ directory: root, entries: [createEntry(join(tmpdir(), "other", "Track.flac"))] })
+    ).resolves.toBe("audio");
+  });
+
+  it("accepts empty and non-audio directories as a new library", async () => {
+    const empty = await createTempDirectory();
+    const withNotes = await createTempDirectory();
+    await writeFile(join(withNotes, "notes.txt"), "text");
+
+    await expect(inspectLibraryDirectory({ directory: empty, entries: [] })).resolves.toBe("new");
+    await expect(inspectLibraryDirectory({ directory: withNotes, entries: [] })).resolves.toBe("new");
+    await expect(
+      inspectLibraryDirectory({ directory: join(empty, "missing"), entries: [] })
+    ).resolves.toBe("new");
   });
 });

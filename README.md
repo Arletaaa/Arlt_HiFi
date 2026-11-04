@@ -44,7 +44,7 @@ pnpm --filter @arlt-hifi/desktop dist   # 产物：apps/desktop/release/arlt-hif
 Get-FileHash apps/desktop/release/arlt-hifi-1.0.2-setup.exe -Algorithm SHA256
 ```
 
-- 曲库位置可以在应用内更改：设置 → 音乐库 →「更改曲库位置」。优先级为 `settings.json.libraryRoot` > 安装器 `install.ini`（userData → 安装目录）> 默认 `%APPDATA%\Arlt-HiFi\library`；安装向导里的曲库选择只作为首次默认值。切换**只改根目录、不迁移文件**，旧目录里的曲目不再显示（清单记录保留，切回即可恢复）。目标目录已有音频时会先警告，从曲库目录内部导入会被拒绝；删除曲目走回收站。
+- 曲库位置可以在应用内更改：设置 → 音乐库 →「更改曲库位置」。优先级为 `settings.json.libraryRoot` > 安装器 `install.ini`（userData → 安装目录）> 默认 `%APPDATA%\Arlt-HiFi\library`（默认位置只在从未配置过曲库时使用）；安装向导里的曲库选择只作为首次默认值。切换**只改根目录、不迁移文件**，旧目录里的曲目不再显示（清单记录保留，切回即可恢复），并且只能切到没有音频文件的文件夹或之前用过的曲库目录——普通音乐文件夹没有托管记录，会被拒绝。从曲库目录内部导入会被拒绝，失效条目只清理当前曲库；删除曲目走回收站。
 - 安装位置与数据位置是两回事：安装向导里可以分别选择「软件安装位置」和「曲库位置」，两者都会在你选择的路径下**新建文件夹**（`Arlt-HiFi` 与 `Arlt-HiFi Library`），并实时显示最终路径。曲库导入后会把音频复制进曲库目录，卸载不会删除它；设置、`library.json` 与封面仍在 `%APPDATA%\Arlt-HiFi`。
 - 版本记录见 [CHANGELOG.md](CHANGELOG.md)，当前版本的发布说明见 [docs/releases/v1.0.2.md](docs/releases/v1.0.2.md)。
 - 许可证：[MIT](LICENSE)（第三方模型/贴图按各自许可，见 [CREDITS](apps/desktop/public/textures/CREDITS.md)）。

@@ -738,7 +738,7 @@
 
 .library-import {
   display: grid;
-  gap: 14px;
+  gap: 16px;
   padding-bottom: 22px;
   border-bottom: 1px solid rgba(243, 238, 230, 0.12);
 }
@@ -756,6 +756,48 @@
   color: rgba(243, 238, 230, 0.42);
 }
 
+.library-block {
+  display: grid;
+  gap: 10px;
+}
+
+.library-block + .library-block {
+  padding-top: 14px;
+  border-top: 1px solid rgba(243, 238, 230, 0.08);
+}
+
+.library-block__label {
+  margin: 0;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: rgba(243, 238, 230, 0.36);
+}
+
+.library-block--location {
+  gap: 8px;
+}
+
+.library-location__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.library-location__source {
+  padding: 1px 8px;
+  border: 1px solid rgba(243, 238, 230, 0.16);
+  border-radius: 999px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: rgba(243, 238, 230, 0.46);
+}
+
+.library-location__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .library-import__path {
   font-size: 10px;
   line-height: 1.5;
@@ -764,7 +806,7 @@
 }
 
 .library-import__hint {
-  margin: -6px 0 0;
+  margin: 0;
   font-size: 10px;
   line-height: 1.5;
   color: rgba(243, 238, 230, 0.3);
@@ -789,12 +831,31 @@
   cursor: pointer;
   transition:
     border-color var(--dur-base) var(--ease),
-    background var(--dur-base) var(--ease);
+    background var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease);
 }
 
 .library-import__button:hover:not(:disabled) {
   border-color: rgba(243, 238, 230, 0.6);
   background: rgba(243, 238, 230, 0.08);
+}
+
+.library-import__button.is-primary {
+  border-color: rgba(243, 238, 230, 0.52);
+  background: rgba(243, 238, 230, 0.14);
+}
+
+.library-import__button.is-primary:hover:not(:disabled) {
+  border-color: rgba(243, 238, 230, 0.72);
+  background: rgba(243, 238, 230, 0.22);
+}
+
+.library-import__button.is-quiet {
+  height: 28px;
+  padding: 0 12px;
+  border-color: rgba(243, 238, 230, 0.16);
+  font-size: 11px;
+  color: rgba(243, 238, 230, 0.66);
 }
 
 .library-import__button:disabled {

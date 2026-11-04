@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -7,8 +7,10 @@ import {
   emptyLibraryManifest,
   filterEntriesByLibraryRoot,
   libraryManifestVersion,
+  mergeEntryUpdates,
   parseLibraryManifest,
   pruneMissingEntries,
+  pruneMissingEntriesUnderRoot,
   readLibraryManifest,
   writeLibraryManifest,
   type LibraryEntry
@@ -130,5 +132,38 @@ describe("library manifest persistence", () => {
 
     expect(result.removed).toBe(1);
     expect(result.entries.map((entry) => entry.track.filePath)).toEqual([existingPath]);
+  });
+
+  it("only prunes missing files under the current root", async () => {
+    const base = await createTempDirectory();
+    const root = join(base, "Library A");
+    const otherRoot = join(base, "Library B");
+    const existingPath = join(root, "Keep.flac");
+    const missingPath = join(root, "Gone.flac");
+    const otherMissingPath = join(otherRoot, "Old.flac");
+
+    await mkdir(root, { recursive: true });
+    await writeFile(existingPath, "audio");
+
+    const result = await pruneMissingEntriesUnderRoot(
+      [sampleEntry(existingPath), sampleEntry(missingPath), sampleEntry(otherMissingPath)],
+      root
+    );
+
+    expect(result.removed).toBe(1);
+    expect(result.entries.map((entry) => entry.track.filePath)).toEqual([existingPath, otherMissingPath]);
+  });
+
+  it("merges rescanned entries by id and keeps other roots untouched", () => {
+    const base = join(tmpdir(), "arlt-hifi-merge");
+    const firstRoot = join(base, "Library A");
+    const secondRoot = join(base, "Library B");
+    const first = sampleEntry(join(firstRoot, "Blue Hour.flac"));
+    const second = sampleEntry(join(secondRoot, "Neon Tide.flac"));
+    const rescanned = { ...first, track: { ...first.track, albumArtist: "Aoi Kaze" } };
+
+    const merged = mergeEntryUpdates([first, second], [rescanned]);
+
+    expect(merged).toEqual([rescanned, second]);
   });
 });

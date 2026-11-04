@@ -1,6 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import type { LibraryLocationSource } from "@arlt-hifi/shared";
+import type { LibraryEntry } from "./library-manifest.js";
 import { isSupportedAudioFile } from "./media-access.js";
 
 /** 曲库根目录的来源：应用内设置 > 安装器配置 > 默认位置。 */
@@ -68,7 +69,7 @@ export const isPathInside = (root: string, target: string): boolean => {
  * 目标目录里是否已有音频文件（含子目录）。
  * 只用于切换曲库前的提示，扫描到 `maxEntries` 个目录项就停下，避免选中超大目录时卡住。
  */
-export const directoryContainsAudioFiles = async (directoryPath: string, maxEntries = 4000): Promise<boolean> => {
+export const directoryContainsAudioFiles = async (directoryPath: string, maxEntries = 20000): Promise<boolean> => {
   const pending = [directoryPath];
   let seen = 0;
 
@@ -103,4 +104,27 @@ export const directoryContainsAudioFiles = async (directoryPath: string, maxEntr
   }
 
   return false;
+};
+
+/** 目录是否已登记为曲库根：清单里有文件落在该目录内。 */
+export const hasRegisteredEntries = (entries: readonly LibraryEntry[], directoryPath: string): boolean =>
+  entries.some((entry) => isPathInside(directoryPath, entry.track.filePath));
+
+export type LibraryDirectoryKind = "registered" | "audio" | "new";
+
+/**
+ * 切换曲库前的目录分类（清单判定 + 文件探测）：
+ * - registered：清单里已有该目录下的条目 → 允许切回；
+ * - audio：有音频但没有登记 → 普通音乐文件夹，拒绝；
+ * - new：没有音频 → 允许作为新库（含非空但没有音频的目录）。
+ */
+export const inspectLibraryDirectory = async (options: {
+  readonly directory: string;
+  readonly entries: readonly LibraryEntry[];
+}): Promise<LibraryDirectoryKind> => {
+  if (hasRegisteredEntries(options.entries, options.directory)) {
+    return "registered";
+  }
+
+  return (await directoryContainsAudioFiles(options.directory)) ? "audio" : "new";
 };

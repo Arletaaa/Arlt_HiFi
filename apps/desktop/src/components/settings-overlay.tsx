@@ -132,11 +132,9 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
   const [changingLocation, setChangingLocation] = useState(false);
   const [locationStatus, setLocationStatus] = useState<LocationStatus | null>(null);
   const busy = importBusy || rescanBusy;
-  const progressLabel = importBusy
-    ? importState.progress
-      ? `正在导入 ${importState.progress.completed}/${importState.progress.total}`
-      : "正在导入…"
-    : "正在重扫标签…";
+  const importProgressLabel = importState.progress
+    ? `正在导入 ${importState.progress.completed}/${importState.progress.total}`
+    : "正在导入…";
 
   useEffect(() => {
     const api = window.arltHifiDesktop;
@@ -215,82 +213,113 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
             <p className="preset-group__label">音乐库</p>
             <p className="library-import__count">{library.length} 首已托管</p>
           </div>
+
+          <div className="library-block">
+            <p className="library-block__label">导入</p>
+            <div className="library-import__actions">
+              <button className="library-import__button is-primary" disabled={busy} onClick={importFiles} type="button">
+                导入音频文件
+              </button>
+              <button className="library-import__button" disabled={busy} onClick={importFolder} type="button">
+                导入文件夹
+              </button>
+              {importBusy ? (
+                <button className="library-import__button" onClick={cancelImport} type="button">
+                  取消导入
+                </button>
+              ) : null}
+              {!busy && importState.remaining && importState.remaining.length > 0 ? (
+                <button className="library-import__button" onClick={continueImport} type="button">
+                  继续导入 {importState.remaining.length} 首
+                </button>
+              ) : null}
+              {importBusy ? (
+                <span aria-live="polite" className="library-import__status">
+                  {importProgressLabel}
+                </span>
+              ) : null}
+            </div>
+            {!busy && importState.message ? (
+              <p
+                className={`library-import__status${importState.phase === "error" ? " is-error" : ""}`}
+                role="status"
+              >
+                {importState.message}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="library-block">
+            <p className="library-block__label">管理</p>
+            <div className="library-import__actions">
+              <button
+                className="library-import__button is-quiet"
+                onClick={() => { setManageOpen(true); }}
+                type="button"
+              >
+                管理歌曲
+              </button>
+              <button
+                className="library-import__button is-quiet"
+                disabled={busy}
+                onClick={rescan}
+                title="重读旧库标签，只补空缺字段，不覆盖已修改的值"
+                type="button"
+              >
+                重扫标签
+              </button>
+              {rescanBusy ? (
+                <span aria-live="polite" className="library-import__status">
+                  正在重扫标签…
+                </span>
+              ) : null}
+            </div>
+            {!busy && rescanState.message ? (
+              <p
+                className={`library-import__status${rescanState.phase === "error" ? " is-error" : ""}`}
+                role="status"
+              >
+                {rescanState.message}
+              </p>
+            ) : null}
+          </div>
+
           {libraryLocation ? (
-            <>
+            <div className="library-block library-block--location">
+              <div className="library-location__head">
+                <p className="library-block__label">曲库位置</p>
+                <span className="library-location__source">
+                  {LIBRARY_SOURCE_LABELS[libraryLocation.source]}
+                </span>
+              </div>
               <p className="library-import__path" title={libraryLocation.directory}>
-                曲库目录（{LIBRARY_SOURCE_LABELS[libraryLocation.source]}）：{libraryLocation.directory}
+                {libraryLocation.directory}
               </p>
               <p className="library-import__hint">
                 切换只改根目录，不迁移文件；旧目录里的曲目不再显示，清单记录仍保留。
               </p>
-            </>
-          ) : null}
-          <div className="library-import__actions">
-            <button
-              className="library-import__button"
-              disabled={busy || changingLocation || !libraryLocation}
-              onClick={changeLibraryLocation}
-              type="button"
-            >
-              {changingLocation ? "正在选择…" : "更改曲库位置"}
-            </button>
-            <button className="library-import__button" disabled={busy} onClick={importFiles} type="button">
-              选择音频文件
-            </button>
-            <button className="library-import__button" disabled={busy} onClick={importFolder} type="button">
-              导入文件夹
-            </button>
-            {importBusy ? (
-              <button className="library-import__button" onClick={cancelImport} type="button">
-                取消导入
-              </button>
-            ) : null}
-            {!busy && importState.remaining && importState.remaining.length > 0 ? (
-              <button className="library-import__button" onClick={continueImport} type="button">
-                继续导入 {importState.remaining.length} 首
-              </button>
-            ) : null}
-            <button className="library-import__button" onClick={() => { setManageOpen(true); }} type="button">
-              管理歌曲
-            </button>
-            <button
-              className="library-import__button"
-              disabled={busy}
-              onClick={rescan}
-              title="重读旧库标签，只补空缺字段，不覆盖已修改的值"
-              type="button"
-            >
-              重扫标签
-            </button>
-            {busy ? (
-              <span aria-live="polite" className="library-import__status">
-                {progressLabel}
-              </span>
-            ) : null}
-          </div>
-          {!busy && importState.message ? (
-            <p
-              className={`library-import__status${importState.phase === "error" ? " is-error" : ""}`}
-              role="status"
-            >
-              {importState.message}
-            </p>
-          ) : null}
-          {!busy && rescanState.message ? (
-            <p
-              className={`library-import__status${rescanState.phase === "error" ? " is-error" : ""}`}
-              role="status"
-            >
-              {rescanState.message}
-            </p>
-          ) : null}
-          {locationStatus ? (
-            <p
-              className={`library-import__status${locationStatus.isError ? " is-error" : ""}`}
-              role="status"
-            >
-              {locationStatus.message}
-            </p>
+              <p className="library-import__hint">
+                只能选择没有音频文件的文件夹，或之前用过的曲库目录。
+              </p>
+              <div className="library-location__actions">
+                <button
+                  className="library-import__button is-quiet"
+                  disabled={busy || changingLocation}
+                  onClick={changeLibraryLocation}
+                  type="button"
+                >
+                  {changingLocation ? "正在选择…" : "更改曲库位置…"}
+                </button>
+              </div>
+              {locationStatus ? (
+                <p
+                  className={`library-import__status${locationStatus.isError ? " is-error" : ""}`}
+                  role="status"
+                >
+                  {locationStatus.message}
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </section>
 

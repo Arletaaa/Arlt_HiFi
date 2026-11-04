@@ -18,9 +18,9 @@ import { appEntryUrl, createAppProtocolHandler, registerAppProtocolPrivileges } 
 import { readInstalledLibraryRoot } from "./install-paths.js";
 import { importAudioFiles } from "./library-import.js";
 import { applyLibraryEdits, editLibraryTrack, removeLibraryTrack, renameLibraryTrack, setLibraryTrackCover } from "./library-manage.js";
-import { filterEntriesByLibraryRoot, pruneMissingEntries, readLibraryManifest, writeLibraryManifest, type LibraryManifest } from "./library-manifest.js";
+import { filterEntriesByLibraryRoot, mergeEntryUpdates, pruneMissingEntriesUnderRoot, readLibraryManifest, writeLibraryManifest, type LibraryEntry, type LibraryManifest } from "./library-manifest.js";
 import {
-  directoryContainsAudioFiles,
+  inspectLibraryDirectory,
   isPathInside,
   normalizeLibraryRoot,
   resolveLibraryRoot,
@@ -118,6 +118,13 @@ const readLibraryManifestForCurrentRoot = async (manifestPath: string): Promise<
   return readLibraryManifest(manifestPath);
 };
 
+/** 当前根目录下可展示的条目；其它根的记录留在清单里，但不读取、不展示。 */
+const selectVisibleEntries = (entries: readonly LibraryEntry[]): readonly LibraryEntry[] =>
+  filterEntriesByLibraryRoot(entries, getLibraryDirectory());
+
+const toVisibleTracks = (entries: readonly LibraryEntry[]): readonly Track[] =>
+  selectVisibleEntries(entries).map((entry) => entry.track);
+
 /** 曲库整体变化后刷新媒体协议白名单（音频整体替换，封面累加）。 */
 const applyMediaAccess = (tracks: readonly Track[]): void => {
   mediaProtocolAccess.allowAudioFilePaths(tracks.map((track) => track.filePath));
@@ -142,18 +149,18 @@ const showMessageBox = async (
   return activeWindow ? dialog.showMessageBox(activeWindow, options) : dialog.showMessageBox(options);
 };
 
-/** 读取托管曲库：以 manifest 为准，顺手剔除已被手工删除的文件。 */
+/** 读取托管曲库：以 manifest 为准，只清理当前根目录下已被手工删除的文件。 */
 const loadManagedLibrary = async (): Promise<readonly Track[]> => {
   const manifestPath = getLibraryManifestPath();
   const manifest = await readLibraryManifestForCurrentRoot(manifestPath);
-  const pruned = await pruneMissingEntries(manifest.entries);
+  const pruned = await pruneMissingEntriesUnderRoot(manifest.entries, getLibraryDirectory());
 
   if (pruned.removed > 0) {
     await writeLibraryManifest(manifestPath, { entries: pruned.entries, version: manifest.version });
   }
 
   // 只在展示与媒体白名单里按当前曲库目录过滤，清单本身保留其它目录的记录。
-  const tracks = filterEntriesByLibraryRoot(pruned.entries, getLibraryDirectory()).map((entry) => entry.track);
+  const tracks = toVisibleTracks(pruned.entries);
 
   applyMediaAccess(tracks);
 
@@ -344,13 +351,15 @@ ipcMain.handle(loadLibraryChannel, async (): Promise<readonly Track[]> => loadMa
 ipcMain.handle(rescanLibraryChannel, async (): Promise<LibraryRescanResult> => {
   const manifestPath = getLibraryManifestPath();
   const manifest = await readLibraryManifestForCurrentRoot(manifestPath);
-  const outcome = await rescanLibraryEntries({ entries: manifest.entries });
+  const visible = selectVisibleEntries(manifest.entries);
+  const outcome = await rescanLibraryEntries({ entries: visible });
+  const merged = mergeEntryUpdates(manifest.entries, outcome.entries);
 
   if (outcome.updated > 0) {
-    await writeLibraryManifest(manifestPath, { entries: outcome.entries, version: manifest.version });
+    await writeLibraryManifest(manifestPath, { entries: merged, version: manifest.version });
   }
 
-  const tracks = outcome.entries.map((entry) => entry.track);
+  const tracks = toVisibleTracks(merged);
   applyMediaAccess(tracks);
 
   return { failed: outcome.failed, tracks, updated: outcome.updated };
@@ -380,7 +389,7 @@ ipcMain.handle(renameTrackChannel, async (_event, rawTrackId: unknown, rawTitle:
   }
 
   await writeLibraryManifest(manifestPath, { entries: outcome.entries, version: manifest.version });
-  applyMediaAccess(outcome.entries.map((entry) => entry.track));
+  applyMediaAccess(toVisibleTracks(outcome.entries));
 
   return outcome.track;
 });
@@ -412,7 +421,7 @@ ipcMain.handle(editTrackChannel, async (_event, rawTrackId: unknown, rawEdit: un
   }
 
   await writeLibraryManifest(manifestPath, { entries: outcome.entries, version: manifest.version });
-  applyMediaAccess(outcome.entries.map((entry) => entry.track));
+  applyMediaAccess(toVisibleTracks(outcome.entries));
 
   return outcome.track;
 });
@@ -445,9 +454,10 @@ ipcMain.handle(applyTrackEditsChannel, async (_event, rawEdits: unknown): Promis
   const entries = applyLibraryEdits({ edits, entries: manifest.entries });
 
   await writeLibraryManifest(manifestPath, { entries, version: manifest.version });
-  applyMediaAccess(entries.map((entry) => entry.track));
+  const tracks = toVisibleTracks(entries);
+  applyMediaAccess(tracks);
 
-  return entries.map((entry) => entry.track);
+  return tracks;
 });
 
 ipcMain.handle(setTrackCoverChannel, async (_event, rawTrackId: unknown): Promise<Track | null> => {
@@ -480,7 +490,7 @@ ipcMain.handle(setTrackCoverChannel, async (_event, rawTrackId: unknown): Promis
   }
 
   await writeLibraryManifest(manifestPath, { entries: outcome.entries, version: manifest.version });
-  applyMediaAccess(outcome.entries.map((entry) => entry.track));
+  applyMediaAccess(toVisibleTracks(outcome.entries));
 
   return outcome.track;
 });
@@ -504,7 +514,7 @@ ipcMain.handle(deleteTrackChannel, async (_event, rawTrackId: unknown): Promise<
   }
 
   await writeLibraryManifest(manifestPath, { entries: outcome.entries, version: manifest.version });
-  applyMediaAccess(outcome.entries.map((entry) => entry.track));
+  applyMediaAccess(toVisibleTracks(outcome.entries));
 
   return true;
 });
@@ -528,54 +538,69 @@ ipcMain.handle(saveSettingsChannel, async (_event, next: unknown): Promise<AppSe
   return settings;
 });
 
-ipcMain.handle(chooseLibraryDirectoryChannel, async (): Promise<LibraryLocation> => {
-  const result = await showDialog({
-    title: "选择曲库目录",
-    properties: ["openDirectory", "createDirectory"],
-    defaultPath: getLibraryDirectory()
-  });
-  const selected = result.filePaths[0] ?? null;
+/**
+ * 只允许切到「没有音频文件的目录」或「已登记的曲库」：
+ * 普通音乐文件夹没有清单条目，切过去也不会显示任何歌，直接拒绝并让用户重选。
+ */
+const chooseLibraryDirectory = async (): Promise<LibraryLocation> => {
+  let defaultPath = getLibraryDirectory();
 
-  if (result.canceled || !selected) {
-    return getLibraryLocation();
-  }
-
-  const directory = normalizeLibraryRoot(selected);
-
-  if (!directory) {
-    throw new Error("请选择绝对路径的目录。");
-  }
-
-  if (directory === getLibraryDirectory()) {
-    return getLibraryLocation();
-  }
-
-  // 目标目录已有音频时提示：导入是复制，但重命名/删除会直接作用在这些文件上。
-  if (await directoryContainsAudioFiles(directory)) {
-    const confirmation = await showMessageBox({
-      type: "warning",
-      buttons: ["继续切换", "取消"],
-      cancelId: 1,
-      defaultId: 1,
-      message: "该目录已有音频文件",
-      detail: "导入会复制副本，重命名/删除会作用于这些文件。\n切换只改曲库根目录，不会迁移现有文件。"
+  for (;;) {
+    const result = await showDialog({
+      title: "选择曲库目录",
+      properties: ["openDirectory", "createDirectory"],
+      defaultPath
     });
+    const selected = result.filePaths[0] ?? null;
 
-    if (confirmation.response !== 0) {
+    if (result.canceled || !selected) {
       return getLibraryLocation();
     }
+
+    const directory = normalizeLibraryRoot(selected);
+
+    if (!directory) {
+      throw new Error("请选择绝对路径的目录。");
+    }
+
+    if (directory === getLibraryDirectory()) {
+      return getLibraryLocation();
+    }
+
+    const manifest = await readLibraryManifestForCurrentRoot(getLibraryManifestPath());
+    const kind = await inspectLibraryDirectory({ directory, entries: manifest.entries });
+
+    if (kind === "audio") {
+      const retry = await showMessageBox({
+        type: "warning",
+        buttons: ["重新选择", "取消"],
+        cancelId: 1,
+        defaultId: 0,
+        message: "无法使用这个文件夹",
+        detail: "里面已有音频文件，但不是 Arlt-HiFi 托管的曲库；切换过去这些文件不会显示，也不会自动导入。\n请选择没有音频文件的文件夹，或之前用过的曲库目录。"
+      });
+
+      if (retry.response !== 0) {
+        return getLibraryLocation();
+      }
+
+      defaultPath = directory;
+      continue;
+    }
+
+    const settings = await readSettings(app.getPath("userData"));
+    const next = { ...settings, libraryRoot: directory };
+
+    await writeSettings(app.getPath("userData"), next);
+    syncLibraryRoot(next);
+    await restartLibraryWatcher();
+    await refreshLibraryAndBroadcast();
+
+    return getLibraryLocation();
   }
+};
 
-  const settings = await readSettings(app.getPath("userData"));
-  const next = { ...settings, libraryRoot: directory };
-
-  await writeSettings(app.getPath("userData"), next);
-  syncLibraryRoot(next);
-  await restartLibraryWatcher();
-  await refreshLibraryAndBroadcast();
-
-  return getLibraryLocation();
-});
+ipcMain.handle(chooseLibraryDirectoryChannel, async (): Promise<LibraryLocation> => chooseLibraryDirectory());
 
 ipcMain.handle(openLibraryFolderChannel, async (): Promise<void> => {
   const directory = getLibraryDirectory();
