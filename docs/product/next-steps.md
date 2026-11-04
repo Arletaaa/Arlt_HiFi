@@ -27,19 +27,21 @@
 ### P0-1 门禁复跑
 
 - [x] 在非 DSH 沙箱环境跑 `pnpm typecheck` / `pnpm test` / `pnpm build`。
-- 结果：三条命令退出码 0；`typecheck` 4 个 workspace 项目；`test` 19 个文件 / 154 个用例（desktop 137 + shared 11 + harness 6）；`build` 产出 `dist` 与 `dist-electron`。
-- 备注：Vite 仍提示 `gallery-stage` chunk 907.93 kB（gzip 247.56 kB），不阻塞构建。
+- 2026-11-04 发版复跑（1.0.0）：三条命令退出码 0；`typecheck` 3 个 workspace 项目；`test` 23 个文件 / 182 个用例（desktop 171 + shared 11）；`build` 产出 `dist` 与 `dist-electron`。
+- 备注：Vite 仍提示 `gallery-stage` chunk 915.33 kB（gzip 249.85 kB），不阻塞构建。
 
 ### P0-2 Windows portable 打包
 
 - [x] `pnpm --filter @arlt-hifi/desktop dist`（配置见 `apps/desktop/electron-builder.yml`）。
-- 结果：`apps/desktop/release/arlt-hifi-0.1.0-portable.exe`，98,428,965 B；未签名。
-- 构建修正：`electron` 移到 `devDependencies`，新增 `electron-builder@26.18.0` 与 `author`。
+- 1.0.0 结果：`apps/desktop/release/arlt-hifi-1.0.0-portable.exe`，95,386,813 B；未签名；`FileVersion` / `ProductVersion` 均为 `1.0.0`。
+- SHA-256：`eb8c2434b50abbf43df6cc5087a9439ab0127567e4e11724536307f8bbd59632`。
+- 构建修正：`electron` 移到 `devDependencies`，新增 `electron-builder@26.18.0` 与 `author`；本机直连 GitHub 不可用时用 `ELECTRON_BUILDER_BINARIES_MIRROR` 走镜像。
 
 ### P0-3 安装包冒烟
 
-- [x] **启动与主界面**：portable 包从 `LOCALAPPDATA` 启动，加载 `arlt-hifi-app://bundle/index.html`；canvas、preload、封面与 5 张专辑正常，截图见 `.verify/shots/package-smoke.png`。
+- [x] **启动与主界面（0.1.0 包）**：portable 包从 `LOCALAPPDATA` 启动，加载 `arlt-hifi-app://bundle/index.html`；canvas、preload、封面与 5 张专辑正常，截图见 `.verify/shots/package-smoke.png`。
 - [ ] **完整交互**：导入文件夹 → 播放 → 开盒 → 拖盘上机 → 落针 → 顺序/循环/随机 → 返回 → 重启恢复设置，仍待真机手测。
+- 1.0.0 包本轮只做了静态校验：asar 内仅 `dist` / `dist-electron` / `package.json`（71 项，无 `node_modules`）、CREDITS 与模型贴图齐全、版本信息与哈希已记录；沙箱内无法弹出 GUI 窗口，启动冒烟请在真机复验。
 - 备注：装包版读取的是现有 `%APPDATA%\Arlt-HiFi` 曲库，说明 manifest 与媒体协议在打包后可用。
 
 ### P0-4 文档与提交

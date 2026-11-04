@@ -25,6 +25,21 @@ Arlt-HiFi 是一款面向本地 HiFi 音乐播放体验的 Electron 桌面音乐
 - Tailwind CSS（preflight）
 - Vitest
 
+## 发布与下载
+
+- 可发布产物是 Windows portable 单文件：`arlt-hifi-<version>-portable.exe`。当前未签名，首次运行可能触发 SmartScreen 提示。
+- 安装包**不入库**：`apps/desktop/release/` 已在 `.gitignore` 中，产物只挂到 GitHub Releases。仓库保留源码、构建配置与署名，减少仓库体积与历史负担。
+- 本地出包与校验：
+
+```bash
+pnpm install
+pnpm build
+pnpm --filter @arlt-hifi/desktop dist   # 产物：apps/desktop/release/arlt-hifi-<version>-portable.exe
+Get-FileHash apps/desktop/release/arlt-hifi-1.0.0-portable.exe -Algorithm SHA256
+```
+
+- 版本记录见 [CHANGELOG.md](CHANGELOG.md)，当前版本的发布说明见 [docs/releases/v1.0.0.md](docs/releases/v1.0.0.md)。
+
 ## 本地开发
 
 ```bash
@@ -46,7 +61,7 @@ pnpm dev:web
 
 ## 当前进度
 
-v1.0 已收尾：单排 CD 货架 + CD 盒 + 唱片机 + CD 详情信息条、搜索/进度/键盘、曲库导入与管理、标签补齐、导入取消/续传、媒体 seek 均已完成；desktop 171 项 + shared 11 项测试通过。收藏、长廊/Bay、列表降级不在 v1.0；后续拆文件、性能收口与标签写回不列入本次交付。[收尾清单](docs/product/next-steps.md)、[roadmap](docs/product/roadmap.md)。
+v1.0.0 已发布：单排 CD 货架 + CD 盒 + 唱片机 + CD 详情信息条、搜索/进度/键盘、曲库导入与管理、标签补齐、导入取消/续传、媒体 seek 均已完成；`typecheck` / `test`（desktop 171 + shared 11）/ `build` 全绿。收藏、长廊/Bay、列表降级不在 v1.0；后续拆文件、性能收口与标签写回不列入本次交付。[收尾清单](docs/product/next-steps.md)、[roadmap](docs/product/roadmap.md)。
 
 ## 质量检查
 
