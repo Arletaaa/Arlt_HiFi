@@ -75,12 +75,16 @@ const createDemoApi = (): ArltHifiDesktopApi => ({
   saveSettings: async (settings) => settings
 });
 
+/** 静态演示构建（GitHub Pages）：没有 Electron，直接按示例曲库展示。 */
+const isStaticDemo = import.meta.env.MODE === "demo";
+
 /**
- * 仅开发预览：在浏览器里补齐 preload API，便于不启动 Electron 也能校对界面。
- * 该模块只在 import.meta.env.DEV 下被动态导入，不会进入生产包。
+ * 网页预览（`pnpm dev:web`）和静态演示（`pnpm build:web`）共用：
+ * 在浏览器里补齐 preload API，便于不启动 Electron 也能校对界面。
+ * 该模块只在上述两种模式下被动态导入，不会进入桌面端生产包。
  */
 export const installDemoDesktopApi = (): void => {
-  if (!import.meta.env.DEV || window.arltHifiDesktop) {
+  if ((!import.meta.env.DEV && !isStaticDemo) || window.arltHifiDesktop) {
     return;
   }
 
@@ -91,7 +95,12 @@ export const installDemoDesktopApi = (): void => {
 
   const params = getDemoQuery();
 
-  if (!params || !params.has("demo")) {
+  if (!params) {
+    return;
+  }
+
+  // 本地 DEV 预览沿用 `?demo=1` 开关；静态演示站打开即载入示例曲库。
+  if (!isStaticDemo && !params.has("demo")) {
     return;
   }
 

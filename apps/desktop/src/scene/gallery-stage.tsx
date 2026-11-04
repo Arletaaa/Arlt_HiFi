@@ -5,6 +5,7 @@ import { Group, MathUtils, Mesh, PMREMGenerator, Texture, Vector2 } from "three"
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { Track } from "@arlt-hifi/shared";
 import { dismissBootScreen } from "../boot-screen";
+import { assetUrl } from "../lib/asset-url";
 import type { GalleryGroup } from "../lib/album-groups";
 import { formatTrackTitles } from "../lib/caption";
 import { getSeedHue } from "../lib/seed";
@@ -227,7 +228,7 @@ const WALL_NORMAL_SCALE = new Vector2(0.8, 0.8);
 
 const WallSurface = () => {
   const preset = useSettingsStore((state) => state.scenePreset);
-  const textures = usePresetSurfaceTextures(`/textures/wall/${preset.wall}`, WALL_REPEAT);
+  const textures = usePresetSurfaceTextures(assetUrl(`/textures/wall/${preset.wall}`), WALL_REPEAT);
 
   return (
     <meshStandardMaterial
@@ -261,7 +262,7 @@ const CABINET_NORMAL_SCALE = new Vector2(0.6, 0.6);
 
 const CabinetSurface = () => {
   const preset = useSettingsStore((state) => state.scenePreset);
-  const textures = usePresetSurfaceTextures(`/textures/base/${preset.base}`, CABINET_REPEAT);
+  const textures = usePresetSurfaceTextures(assetUrl(`/textures/base/${preset.base}`), CABINET_REPEAT);
 
   return (
     <meshStandardMaterial
@@ -283,7 +284,7 @@ const DESK_NORMAL_SCALE = new Vector2(0.7, 0.7);
 
 const DeskSurface = () => {
   const preset = useSettingsStore((state) => state.scenePreset);
-  const textures = usePresetSurfaceTextures(`/textures/table/${preset.table}`, DESK_REPEAT);
+  const textures = usePresetSurfaceTextures(assetUrl(`/textures/table/${preset.table}`), DESK_REPEAT);
 
   return (
     <mesh castShadow position={[0, BASE_Y - 0.32, 0.05]} receiveShadow>

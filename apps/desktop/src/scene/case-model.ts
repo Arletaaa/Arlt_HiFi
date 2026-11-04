@@ -1,7 +1,8 @@
 import { Box3, Group, Material, Mesh, MeshStandardMaterial, Object3D, PlaneGeometry, Texture, Vector3 } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { assetUrl } from "../lib/asset-url";
 
-export const CASE_MODEL_URL = "/models/cd-case.glb";
+export const CASE_MODEL_URL = assetUrl("/models/cd-case.glb");
 
 /** 封面（内页）。 */
 const COVER_NODE = "Object_11";

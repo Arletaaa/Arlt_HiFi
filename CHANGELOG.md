@@ -17,19 +17,22 @@
 - 导入体验：取消 / 续传、进度反馈、失败原因提示。
 - 设置：材质预设（台面 / 台底 / 墙面）、四档光效、音量环、曲库导入与管理入口。
 - 素材署名：CD 盒与唱片机模型按 CC-BY 4.0 在设置浮层署名。
+- 在线演示：同一份渲染层可打成静态站点（`pnpm build:web`，内置示例曲库）发布到 GitHub Pages，推送 `main` 由 `.github/workflows/deploy-pages.yml` 自动构建部署；导入曲库、真实播放与设置持久化只在桌面版可用。
 
 ### 工程
 
 - monorepo（pnpm workspace）：`apps/desktop`、`packages/shared`、`packages/ui`。
 - 安全边界：渲染层只经 preload API 通信，音频与封面经受控媒体协议（支持 Range）读取。
-- 质量门禁：`pnpm typecheck` 全绿；`pnpm test` 23 个文件 / 182 个用例（desktop 171 + shared 11）；`pnpm build` 通过。
-- 发布配置：electron-builder 26.18.0，Windows NSIS 安装包（非一键安装、可改安装目录、带开始菜单/桌面快捷方式与卸载项），`asar` 打包，产物名 `arlt-hifi-1.0.0-setup.exe`（102,772,286 B，未签名）。
+- 静态资源统一走 `assetUrl()` + Vite `BASE_URL`，桌面端（`./`）与 Pages 子路径部署共用同一套代码。
+- 质量门禁：`pnpm typecheck` 全绿；`pnpm test` 24 个文件 / 187 个用例（desktop 176 + shared 11）；`pnpm build` 与 `pnpm build:web` 均通过。
+- 发布配置：electron-builder 26.18.0，Windows NSIS 安装包（非一键安装、带开始菜单/桌面快捷方式与卸载项），`asar` 打包，产物名 `arlt-hifi-1.0.0-setup.exe`（102,765,962 B，未签名）。
+- 安装向导用自定义页（`apps/desktop/build/installer.nsh`）同时选择「软件安装位置」和「曲库位置」，两处都在用户选择的路径下新建文件夹并实时显示最终路径；曲库默认与软件目录同级（`Arlt-HiFi Library`），避免卸载误删，安装器把选择结果写进 `userData/install.ini` 供应用读取。
 - 许可证：代码 MIT（`LICENSE`），第三方模型 CC-BY 4.0 / 贴图 CC0 按原许可署名。
 
 ### 已知限制
 
 - 安装包未做代码签名，SmartScreen 会提示"未知发布者"；安装程序与主程序都不签名。
-- 数据目录固定在 `%APPDATA%\Arlt-HiFi`（默认 C 盘）：设置、`library.json`、封面与导入后复制的曲库都在这里，曲库体积约等于导入音频总量；安装目录可选，但不改变数据位置。
+- 曲库目录在安装时选择，安装后暂不支持在应用内更改；`settings.json`、`library.json` 与封面仍固定在 `%APPDATA%\Arlt-HiFi`。
 - 装包版的完整交互链路（导入 → 播放 → 开盒 → 拖盘上机 → 落针 → 播放模式 → 重启恢复）仍待真机手测；本次仅校验了包内文件、版本信息与哈希。
 - 列表视图、无 WebGL / 低帧率降级不在 v1.0 范围内。
 - 标签写回、拆文件与性能收口留待后续版本。
@@ -37,4 +40,4 @@
 ### 发布产物
 
 - `arlt-hifi-1.0.0-setup.exe`
-- SHA-256：`e3f00f37677aa8cc718b3e605b97203706c075b05a4026c18068c590237f0dff`
+- SHA-256：`a94675684445b704130a2453e9cb5ec9b54afd83462519fa341a8feb90216ddb`

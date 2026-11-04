@@ -13,6 +13,7 @@ import type {
   Track
 } from "@arlt-hifi/shared";
 import { appEntryUrl, createAppProtocolHandler, registerAppProtocolPrivileges } from "./app-protocol.js";
+import { readInstalledLibraryRoot } from "./install-paths.js";
 import { importAudioFiles } from "./library-import.js";
 import { applyLibraryEdits, editLibraryTrack, removeLibraryTrack, renameLibraryTrack, setLibraryTrackCover } from "./library-manage.js";
 import { pruneMissingEntries, readLibraryManifest, writeLibraryManifest } from "./library-manifest.js";
@@ -67,7 +68,9 @@ const getActiveWindow = (): electron.BrowserWindow | null =>
   BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null;
 
 const getCoversDirectory = (): string => join(app.getPath("userData"), "covers");
-const getLibraryDirectory = (): string => join(app.getPath("userData"), "library");
+// 安装器写下的曲库目录优先；开发模式没有安装记录时退回 userData/library。
+let installedLibraryRoot: string | null = null;
+const getLibraryDirectory = (): string => installedLibraryRoot ?? join(app.getPath("userData"), "library");
 const getLibraryManifestPath = (): string => join(app.getPath("userData"), "library.json");
 
 /** 曲库整体变化后刷新媒体协议白名单（音频整体替换，封面累加）。 */
@@ -130,9 +133,10 @@ const scheduleLibraryChanged = (): void => {
 
 const startLibraryWatcher = async (): Promise<void> => {
   const directory = getLibraryDirectory();
-  await mkdir(directory, { recursive: true });
 
   try {
+    await mkdir(directory, { recursive: true });
+
     libraryWatcher = watch(directory, { recursive: true }, () => {
       scheduleLibraryChanged();
     });
@@ -141,7 +145,7 @@ const startLibraryWatcher = async (): Promise<void> => {
       libraryWatcher = null;
     });
   } catch {
-    // 平台不支持递归监听时，仍可在切回窗口时刷新。
+    // 盘符不可用或平台不支持递归监听时，仍可在切回窗口时刷新。
   }
 };
 
@@ -469,7 +473,9 @@ const createWindow = async (): Promise<void> => {
   await window.loadURL(appEntryUrl);
 };
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  installedLibraryRoot = await readInstalledLibraryRoot(app.getPath("userData"));
+
   mediaProtocolAccess.registerHandler();
   appProtocolAccess.registerHandler();
   void startLibraryWatcher();

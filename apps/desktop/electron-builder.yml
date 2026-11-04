@@ -17,10 +17,12 @@ win:
     - nsis
 nsis:
   artifactName: arlt-hifi-${version}-setup.exe
+  include: installer.nsh
   oneClick: false
   perMachine: false
   allowElevation: true
-  allowToChangeInstallationDirectory: true
+  # 路径选择由 build/installer.nsh 的自定义页接管（安装位置 + 曲库位置，均自动新建子文件夹）。
+  allowToChangeInstallationDirectory: false
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: Arlt-HiFi

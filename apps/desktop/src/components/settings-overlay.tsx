@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLibraryImport } from "../hooks/use-library-import";
 import { useLibraryRescan } from "../hooks/use-library-rescan";
+import { assetUrl } from "../lib/asset-url";
 import { usePlayerStore } from "../store/player-store";
 import { useSettingsStore } from "../store/settings-store";
 import { ManageOverlay } from "./manage-overlay";
@@ -12,24 +13,24 @@ interface Swatch {
 }
 
 const TABLE_SWATCHES: readonly Swatch[] = [
-  { id: "wood029", image: "/textures/swatches/wood029.jpg", base: "#6b4f34" },
-  { id: "wood066", image: "/textures/swatches/wood066.jpg", base: "#8a5a35" },
-  { id: "wood069", image: "/textures/swatches/wood069.jpg", base: "#5a4030" },
-  { id: "wood095", image: "/textures/swatches/wood095.jpg", base: "#3f2f26" }
+  { id: "wood029", image: assetUrl("/textures/swatches/wood029.jpg"), base: "#6b4f34" },
+  { id: "wood066", image: assetUrl("/textures/swatches/wood066.jpg"), base: "#8a5a35" },
+  { id: "wood069", image: assetUrl("/textures/swatches/wood069.jpg"), base: "#5a4030" },
+  { id: "wood095", image: assetUrl("/textures/swatches/wood095.jpg"), base: "#3f2f26" }
 ];
 
 const BASE_SWATCHES: readonly Swatch[] = [
-  { id: "wood002", image: "/textures/swatches/wood002.jpg", base: "#4a3324" },
-  { id: "wood007", image: "/textures/swatches/wood007.jpg", base: "#6b4f34" },
-  { id: "wood092", image: "/textures/swatches/wood092.jpg", base: "#2f3a2f" },
-  { id: "wood096", image: "/textures/swatches/wood096.jpg", base: "#2a2b30" }
+  { id: "wood002", image: assetUrl("/textures/swatches/wood002.jpg"), base: "#4a3324" },
+  { id: "wood007", image: assetUrl("/textures/swatches/wood007.jpg"), base: "#6b4f34" },
+  { id: "wood092", image: assetUrl("/textures/swatches/wood092.jpg"), base: "#2f3a2f" },
+  { id: "wood096", image: assetUrl("/textures/swatches/wood096.jpg"), base: "#2a2b30" }
 ];
 
 const WALL_SWATCHES: readonly Swatch[] = [
-  { id: "fabric009", image: "/textures/swatches/fabric009.jpg", base: "#5d2b2b" },
-  { id: "fabric048", image: "/textures/swatches/fabric048.jpg", base: "#8a8378" },
-  { id: "leather012", image: "/textures/swatches/leather012.jpg", base: "#4a3b33" },
-  { id: "woodsiding009", image: "/textures/swatches/woodsiding009.jpg", base: "#6b6152" }
+  { id: "fabric009", image: assetUrl("/textures/swatches/fabric009.jpg"), base: "#5d2b2b" },
+  { id: "fabric048", image: assetUrl("/textures/swatches/fabric048.jpg"), base: "#8a8378" },
+  { id: "leather012", image: assetUrl("/textures/swatches/leather012.jpg"), base: "#4a3b33" },
+  { id: "woodsiding009", image: assetUrl("/textures/swatches/woodsiding009.jpg"), base: "#6b6152" }
 ];
 
 const LIGHT_SWATCHES: readonly Swatch[] = [

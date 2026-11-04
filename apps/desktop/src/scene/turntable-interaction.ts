@@ -1,8 +1,9 @@
 /** CD 唱片机的纯逻辑：常量、角度、转速、灯色，方便单测。 */
 
 import { Quaternion, Vector3 } from "three";
+import { assetUrl } from "../lib/asset-url";
 
-export const TURNTABLE_MODEL_URL = "/models/cd-player.glb";
+export const TURNTABLE_MODEL_URL = assetUrl("/models/cd-player.glb");
 
 /** 唱片机在交互区的位置：CD 盒右侧、墙面之前。 */
 export const DECK_POSITION: readonly [number, number, number] = [1.55, 2.9, 0.2];

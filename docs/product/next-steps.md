@@ -27,14 +27,15 @@
 ### P0-1 门禁复跑
 
 - [x] 在非 DSH 沙箱环境跑 `pnpm typecheck` / `pnpm test` / `pnpm build`。
-- 2026-11-04 发版复跑（1.0.0）：三条命令退出码 0；`typecheck` 3 个 workspace 项目；`test` 23 个文件 / 182 个用例（desktop 171 + shared 11）；`build` 产出 `dist` 与 `dist-electron`。
+- 2026-11-04 发版复跑（1.0.0）：三条命令退出码 0；`typecheck` 3 个 workspace 项目；`test` 24 个文件 / 187 个用例（desktop 176 + shared 11）；`build` 产出 `dist` 与 `dist-electron`。
 - 备注：Vite 仍提示 `gallery-stage` chunk 915.33 kB（gzip 249.85 kB），不阻塞构建。
 
 ### P0-2 Windows 安装包打包
 
 - [x] `pnpm --filter @arlt-hifi/desktop dist`（配置见 `apps/desktop/electron-builder.yml`）。
-- 1.0.0 结果：`apps/desktop/release/arlt-hifi-1.0.0-setup.exe`（NSIS 安装包），102,772,286 B；未签名；`FileVersion` / `ProductVersion` 均为 `1.0.0`。
-- SHA-256：`e3f00f37677aa8cc718b3e605b97203706c075b05a4026c18068c590237f0dff`。
+- 1.0.0 结果：`apps/desktop/release/arlt-hifi-1.0.0-setup.exe`（NSIS 安装包），102,765,962 B；未签名；`FileVersion` / `ProductVersion` 均为 `1.0.0`。
+- SHA-256：`a94675684445b704130a2453e9cb5ec9b54afd83462519fa341a8feb90216ddb`。
+- 安装页：`apps/desktop/build/installer.nsh` 自定义页同时选择安装位置与曲库位置，两者都在所选路径下新建文件夹并实时预览；安装器把曲库路径写入 `userData/install.ini`，主进程 `install-paths.ts` 读取后作为导入目标。
 - 构建修正：`electron` 移到 `devDependencies`，新增 `electron-builder@26.18.0` 与 `author`；`dist` 脚本不再硬编码 `--win portable`，目标由 `electron-builder.yml` 决定；本机直连 GitHub 不可用时用 `ELECTRON_BUILDER_BINARIES_MIRROR` 走镜像。
 
 ### P0-3 安装包冒烟

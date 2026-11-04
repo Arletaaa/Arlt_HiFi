@@ -12,6 +12,7 @@
     "dev:web": "vite --host 0.0.0.0",
     "dev:electron": "node scripts/dev-electron.mjs",
     "build": "node scripts/clean.mjs && tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit && node scripts/build-electron.mjs && vite build",
+    "build:web": "vite build --mode demo",
     "start": "node scripts/start-electron.mjs",
     "dist": "electron-builder --win --config electron-builder.yml",
     "dist:offline": "electron-builder --win --config electron-builder.yml --config.win.signAndEditExecutable=false",
