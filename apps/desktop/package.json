@@ -2,6 +2,7 @@
   "name": "@arlt-hifi/desktop",
   "version": "1.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "main": "dist-electron/main.js",
   "description": "Arlt-HiFi desktop app",
@@ -12,8 +13,8 @@
     "dev:electron": "node scripts/dev-electron.mjs",
     "build": "node scripts/clean.mjs && tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit && node scripts/build-electron.mjs && vite build",
     "start": "node scripts/start-electron.mjs",
-    "dist": "electron-builder --win portable --config electron-builder.yml",
-    "dist:offline": "electron-builder --win portable --config electron-builder.yml --config.win.signAndEditExecutable=false",
+    "dist": "electron-builder --win --config electron-builder.yml",
+    "dist:offline": "electron-builder --win --config electron-builder.yml --config.win.signAndEditExecutable=false",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "test": "vitest run",
     "lint": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit"

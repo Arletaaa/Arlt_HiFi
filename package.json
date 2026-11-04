@@ -2,6 +2,7 @@
   "name": "arlt-hifi",
   "version": "1.0.0",
   "private": true,
+  "license": "MIT",
   "description": "Arlt-HiFi monorepo for an anime-content local HiFi music desktop app.",
   "type": "module",
   "scripts": {

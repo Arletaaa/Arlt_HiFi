@@ -1,5 +1,6 @@
 appId: com.arlthifi
 productName: Arlt-HiFi
+copyright: Copyright © 2026 Arlt-HiFi
 directories:
   output: release
 files:
@@ -13,6 +14,18 @@ npmRebuild: false
 win:
   icon: build/icon.ico
   target:
-    - portable
-portable:
-  artifactName: arlt-hifi-${version}-portable.exe
+    - nsis
+nsis:
+  artifactName: arlt-hifi-${version}-setup.exe
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Arlt-HiFi
+  uninstallDisplayName: Arlt-HiFi
+  deleteAppDataOnUninstall: false
+  runAfterFinish: true
+  language: "2052"
+  license: ../../LICENSE

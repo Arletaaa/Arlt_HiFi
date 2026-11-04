@@ -27,18 +27,20 @@ Arlt-HiFi 是一款面向本地 HiFi 音乐播放体验的 Electron 桌面音乐
 
 ## 发布与下载
 
-- 可发布产物是 Windows portable 单文件：`arlt-hifi-<version>-portable.exe`。当前未签名，首次运行可能触发 SmartScreen 提示。
+- 可发布产物是 Windows 安装包：`arlt-hifi-<version>-setup.exe`（NSIS，非一键安装，可自选安装目录）。当前未签名，SmartScreen 会提示"未知发布者"。
 - 安装包**不入库**：`apps/desktop/release/` 已在 `.gitignore` 中，产物只挂到 GitHub Releases。仓库保留源码、构建配置与署名，减少仓库体积与历史负担。
 - 本地出包与校验：
 
 ```bash
 pnpm install
 pnpm build
-pnpm --filter @arlt-hifi/desktop dist   # 产物：apps/desktop/release/arlt-hifi-<version>-portable.exe
-Get-FileHash apps/desktop/release/arlt-hifi-1.0.0-portable.exe -Algorithm SHA256
+pnpm --filter @arlt-hifi/desktop dist   # 产物：apps/desktop/release/arlt-hifi-<version>-setup.exe
+Get-FileHash apps/desktop/release/arlt-hifi-1.0.0-setup.exe -Algorithm SHA256
 ```
 
+- 安装位置与数据位置是两回事：程序默认装在当前用户目录（可改装到 D 盘），但设置、`library.json`、封面与**导入后复制的曲库**都在 `%APPDATA%\Arlt-HiFi`（默认 C 盘）。曲库体积等于导入音频总量，卸载时可选择是否保留。
 - 版本记录见 [CHANGELOG.md](CHANGELOG.md)，当前版本的发布说明见 [docs/releases/v1.0.0.md](docs/releases/v1.0.0.md)。
+- 许可证：[MIT](LICENSE)（第三方模型/贴图按各自许可，见 [CREDITS](apps/desktop/public/textures/CREDITS.md)）。
 
 ## 本地开发
 
@@ -69,13 +71,13 @@ v1.0.0 已发布：单排 CD 货架 + CD 盒 + 唱片机 + CD 详情信息条、
 pnpm typecheck
 pnpm test
 pnpm build
-pnpm --filter @arlt-hifi/desktop dist  # Windows portable 安装包
+pnpm --filter @arlt-hifi/desktop dist  # Windows 安装包（NSIS）
 pnpm --filter @arlt-hifi/desktop dist:offline  # 无签名/无网络时快速出包
 ```
 
-`dist` 产物在 `apps/desktop/release/arlt-hifi-<version>-portable.exe`，当前未签名。`dist:offline` 会跳过 EXE 图标/版本编辑与签名，只用于本地冒烟。
+`dist` 产物在 `apps/desktop/release/arlt-hifi-<version>-setup.exe`，当前未签名。`dist:offline` 会跳过 EXE 图标/版本编辑与签名，只用于本地冒烟。
 
-如果项目目录受 DSH 的 Windows 权限限制，**不要直接从 `release/` 双击 portable**：启动器会被 ACL 拦住而无反应。先把 exe 复制到桌面或 `%LOCALAPPDATA%` 再运行。
+如果项目目录受 DSH 的 Windows 权限限制，**不要直接从 `release/` 运行未打包的 `win-unpacked`**：会被 ACL 拦住而无反应。测安装包时先复制到桌面或 `%LOCALAPPDATA%`，或在真机上直接安装。
 
 ## 工作区结构
 

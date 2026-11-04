@@ -23,16 +23,18 @@
 - monorepo（pnpm workspace）：`apps/desktop`、`packages/shared`、`packages/ui`。
 - 安全边界：渲染层只经 preload API 通信，音频与封面经受控媒体协议（支持 Range）读取。
 - 质量门禁：`pnpm typecheck` 全绿；`pnpm test` 23 个文件 / 182 个用例（desktop 171 + shared 11）；`pnpm build` 通过。
-- 发布配置：electron-builder 26.18.0，Windows portable 单文件，`asar` 打包，产物名 `arlt-hifi-1.0.0-portable.exe`（95,386,813 B，未签名）。
+- 发布配置：electron-builder 26.18.0，Windows NSIS 安装包（非一键安装、可改安装目录、带开始菜单/桌面快捷方式与卸载项），`asar` 打包，产物名 `arlt-hifi-1.0.0-setup.exe`（102,772,286 B，未签名）。
+- 许可证：代码 MIT（`LICENSE`），第三方模型 CC-BY 4.0 / 贴图 CC0 按原许可署名。
 
 ### 已知限制
 
-- 安装包未做代码签名，首次运行可能触发 SmartScreen 提示。
+- 安装包未做代码签名，SmartScreen 会提示"未知发布者"；安装程序与主程序都不签名。
+- 数据目录固定在 `%APPDATA%\Arlt-HiFi`（默认 C 盘）：设置、`library.json`、封面与导入后复制的曲库都在这里，曲库体积约等于导入音频总量；安装目录可选，但不改变数据位置。
 - 装包版的完整交互链路（导入 → 播放 → 开盒 → 拖盘上机 → 落针 → 播放模式 → 重启恢复）仍待真机手测；本次仅校验了包内文件、版本信息与哈希。
 - 列表视图、无 WebGL / 低帧率降级不在 v1.0 范围内。
 - 标签写回、拆文件与性能收口留待后续版本。
 
 ### 发布产物
 
-- `arlt-hifi-1.0.0-portable.exe`
-- SHA-256：`eb8c2434b50abbf43df6cc5087a9439ab0127567e4e11724536307f8bbd59632`
+- `arlt-hifi-1.0.0-setup.exe`
+- SHA-256：`e3f00f37677aa8cc718b3e605b97203706c075b05a4026c18068c590237f0dff`
