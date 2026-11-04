@@ -24,14 +24,17 @@
 - 安装器 `install.ini` 由 NSIS Unicode 写成 UTF-16LE，应用此前按 UTF-8 读取，导致曲库目录设置不生效；现在按 BOM 自动解码。
 - 换过曲库目录后旧目录的清单条目仍会显示；现在读取清单时只保留当前曲库目录内的条目。
 - 安装页离开时预检目标目录可写性，权限不足时给出明确提示，而不是等到写卸载器才失败。
+- 安装页两个路径框改为只读，只能通过「浏览」选择目录，避免手输路径带来的问题。
+- 安装器在安装目录也写一份 `install.ini`，并兼容 UTF-16LE（带/不带 BOM）与 UTF-8，防止 `$APPDATA` 指向其他账户时读不到配置。
+- 设置页显示当前曲库目录与来源（安装器配置 / 默认位置），便于确认配置是否生效。
 
 ### 工程
 
 - monorepo（pnpm workspace）：`apps/desktop`、`packages/shared`、`packages/ui`。
 - 安全边界：渲染层只经 preload API 通信，音频与封面经受控媒体协议（支持 Range）读取。
 - 静态资源统一走 `assetUrl()` + Vite `BASE_URL`，桌面端（`./`）与 Pages 子路径部署共用同一套代码。
-- 质量门禁：`pnpm typecheck` 全绿；`pnpm test` 24 个文件 / 189 个用例（desktop 178 + shared 11）；`pnpm build` 与 `pnpm build:web` 均通过。
-- 发布配置：electron-builder 26.18.0，Windows NSIS 安装包（非一键安装、带开始菜单/桌面快捷方式与卸载项），`asar` 打包，产物名 `arlt-hifi-1.0.0-setup.exe`（102,767,787 B，未签名）。
+- 质量门禁：`pnpm typecheck` 全绿；`pnpm test` 24 个文件 / 191 个用例（desktop 180 + shared 11）；`pnpm build` 与 `pnpm build:web` 均通过。
+- 发布配置：electron-builder 26.18.0，Windows NSIS 安装包（非一键安装、带开始菜单/桌面快捷方式与卸载项），`asar` 打包，产物名 `arlt-hifi-1.0.0-setup.exe`（102,769,008 B，未签名）。
 - 安装向导用自定义页（`apps/desktop/build/installer.nsh`）同时选择「软件安装位置」和「曲库位置」：输入框直接显示**最终路径**（选中父目录时自动补 `Arlt-HiFi` / `Arlt-HiFi Library`，并合并多余反斜杠），下方实时预览；曲库默认与软件目录同级，避免卸载误删，安装器把选择结果写进 `userData/install.ini` 供应用读取。
 - 许可证：代码 MIT（`LICENSE`），第三方模型 CC-BY 4.0 / 贴图 CC0 按原许可署名。
 
@@ -48,4 +51,4 @@
 ### 发布产物
 
 - `arlt-hifi-1.0.0-setup.exe`
-- SHA-256：`9eb056547121a9a8e8c97423857b33970f52c4f565eeaf82b9132679eb16298b`
+- SHA-256：`b3a62481ee694e61b67d98c95911c6519f9cc412e03137e263b7588adf496b18`

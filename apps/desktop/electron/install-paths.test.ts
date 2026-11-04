@@ -59,6 +59,27 @@ describe("readInstalledLibraryRoot", () => {
     await expect(readInstalledLibraryRoot(userData)).resolves.toBe("H:\\Arlt-HiFi Library");
   });
 
+  it("also decodes UTF-16LE without a BOM", async () => {
+    const userData = await createUserDataDirectory();
+    await writeFile(
+      join(userData, "install.ini"),
+      Buffer.from("[paths]\r\nlibraryRoot=E:\\Music\\Arlt-HiFi Library\r\n", "utf16le")
+    );
+
+    await expect(readInstalledLibraryRoot(userData)).resolves.toBe("E:\\Music\\Arlt-HiFi Library");
+  });
+
+  it("falls back to the install directory when userData has no config", async () => {
+    const userData = await createUserDataDirectory();
+    const installDirectory = await createUserDataDirectory();
+    await writeFile(
+      join(installDirectory, "install.ini"),
+      Buffer.from("\uFEFF[paths]\r\nlibraryRoot=F:\\Music\\Arlt-HiFi Library\r\n", "utf16le")
+    );
+
+    await expect(readInstalledLibraryRoot(userData, installDirectory)).resolves.toBe("F:\\Music\\Arlt-HiFi Library");
+  });
+
   it("returns null when there is no install record (dev mode)", async () => {
     const userData = await createUserDataDirectory();
 

@@ -10,6 +10,7 @@ import type {
   LibraryImportProgress,
   LibraryImportResult,
   LibraryRescanResult,
+  LibraryLocation,
   Track
 } from "@arlt-hifi/shared";
 import { appEntryUrl, createAppProtocolHandler, registerAppProtocolPrivileges } from "./app-protocol.js";
@@ -43,6 +44,7 @@ const applyTrackEditsChannel = "library:apply-edits";
 const setTrackCoverChannel = "library:set-track-cover";
 const deleteTrackChannel = "library:delete-track";
 const openLibraryFolderChannel = "library:open-folder";
+const getLibraryLocationChannel = "library:get-location";
 const libraryChangedChannel = "library:changed";
 const libraryImportProgressChannel = "library:import-progress";
 const loadSettingsChannel = "settings:load";
@@ -454,6 +456,11 @@ ipcMain.handle(openLibraryFolderChannel, async (): Promise<void> => {
   }
 });
 
+ipcMain.handle(getLibraryLocationChannel, async (): Promise<LibraryLocation> => ({
+  directory: getLibraryDirectory(),
+  fromInstaller: installedLibraryRoot !== null
+}));
+
 const createWindow = async (): Promise<void> => {
   const window = new BrowserWindow({
     width: 1280,
@@ -481,7 +488,9 @@ const createWindow = async (): Promise<void> => {
 };
 
 app.whenReady().then(async () => {
-  installedLibraryRoot = await readInstalledLibraryRoot(app.getPath("userData"));
+  // 安装目录也放了一份 install.ini，避免 $APPDATA 指向其他账户时读不到配置。
+  const installDirectory = app.isPackaged ? dirname(process.resourcesPath) : null;
+  installedLibraryRoot = await readInstalledLibraryRoot(app.getPath("userData"), installDirectory);
 
   mediaProtocolAccess.registerHandler();
   appProtocolAccess.registerHandler();

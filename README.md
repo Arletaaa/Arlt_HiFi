@@ -74,7 +74,7 @@ pnpm --filter @arlt-hifi/desktop build:web   # 产物：apps/desktop/dist
 
 ## 当前进度
 
-v1.0.0 已发布：单排 CD 货架 + CD 盒 + 唱片机 + CD 详情信息条、搜索/进度/键盘、曲库导入与管理、标签补齐、导入取消/续传、媒体 seek 均已完成；`typecheck` / `test`（desktop 178 + shared 11）/ `build` / `build:web` 全绿。收藏、长廊/Bay、列表降级不在 v1.0；后续拆文件、性能收口与标签写回不列入本次交付。[收尾清单](docs/product/next-steps.md)、[roadmap](docs/product/roadmap.md)。
+v1.0.0 已发布：单排 CD 货架 + CD 盒 + 唱片机 + CD 详情信息条、搜索/进度/键盘、曲库导入与管理、标签补齐、导入取消/续传、媒体 seek 均已完成；`typecheck` / `test`（desktop 180 + shared 11）/ `build` / `build:web` 全绿。收藏、长廊/Bay、列表降级不在 v1.0；后续拆文件、性能收口与标签写回不列入本次交付。[收尾清单](docs/product/next-steps.md)、[roadmap](docs/product/roadmap.md)。
 
 ## 质量检查
 

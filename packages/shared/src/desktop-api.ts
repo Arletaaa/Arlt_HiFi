@@ -77,8 +77,17 @@ export interface TrackEdit {
   readonly trackId: string;
 }
 
+/** 当前曲库目录与来源（安装器配置或回退到默认位置）。 */
+export interface LibraryLocation {
+  readonly directory: string;
+  /** true = 来自安装器写下的 install.ini；false = 回退到 userData/library。 */
+  readonly fromInstaller: boolean;
+}
+
 export interface ArltHifiDesktopApi {
   readonly platform: DesktopPlatform;
+  /** 当前曲库目录与来源，用于设置页展示与排查。 */
+  readonly getLibraryLocation: () => Promise<LibraryLocation>;
   /** 打开系统多选文件对话框，只选不复制。 */
   readonly selectAudioFiles: () => Promise<AudioFileSelectionResult>;
   /** 把选中的文件复制进 userData/library 并写库。 */

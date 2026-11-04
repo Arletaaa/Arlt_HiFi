@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { LibraryLocation } from "@arlt-hifi/shared";
 import { useLibraryImport } from "../hooks/use-library-import";
 import { useLibraryRescan } from "../hooks/use-library-rescan";
 import { assetUrl } from "../lib/asset-url";
@@ -113,12 +114,36 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
   } = useLibraryImport();
   const { busy: rescanBusy, rescan, state: rescanState } = useLibraryRescan();
   const [manageOpen, setManageOpen] = useState(false);
+  const [libraryLocation, setLibraryLocation] = useState<LibraryLocation | null>(null);
   const busy = importBusy || rescanBusy;
   const progressLabel = importBusy
     ? importState.progress
       ? `正在导入 ${importState.progress.completed}/${importState.progress.total}`
       : "正在导入…"
     : "正在重扫标签…";
+
+  useEffect(() => {
+    const api = window.arltHifiDesktop;
+
+    if (!api) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void api
+      .getLibraryLocation()
+      .then((location) => {
+        if (!cancelled) {
+          setLibraryLocation(location);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <>
@@ -132,6 +157,12 @@ export const SettingsOverlay = ({ onClose }: SettingsOverlayProps) => {
             <p className="preset-group__label">音乐库</p>
             <p className="library-import__count">{library.length} 首已托管</p>
           </div>
+          {libraryLocation ? (
+            <p className="library-import__path" title={libraryLocation.directory}>
+              曲库目录：{libraryLocation.directory}
+              {libraryLocation.fromInstaller ? "" : "（默认位置，未读到安装配置）"}
+            </p>
+          ) : null}
           <div className="library-import__actions">
             <button className="library-import__button" disabled={busy} onClick={importFiles} type="button">
               选择音频文件

@@ -57,6 +57,7 @@ const rejectWebPreviewManage = async (): Promise<never> => {
 
 const createDemoApi = (): ArltHifiDesktopApi => ({
   platform: "win32",
+  getLibraryLocation: async () => ({ directory: "（网页预览不托管曲库）", fromInstaller: false }),
   selectAudioFiles: rejectWebPreviewImport,
   importAudioFiles: rejectWebPreviewImport,
   importAudioFolder: rejectWebPreviewImport,

@@ -46,11 +46,12 @@ Var arltPathValue
   ${EndIf}
 !macroend
 
-; 安装时创建曲库目录，并把选择结果写给应用读取。
+; 安装时创建曲库目录，并把选择结果写给应用读取（userData 与安装目录各写一份）。
 !macro customInstall
   CreateDirectory "$arltLibraryTarget"
   CreateDirectory "$APPDATA\${APP_FILENAME}"
   WriteINIStr "$APPDATA\${APP_FILENAME}\install.ini" "paths" "libraryRoot" "$arltLibraryTarget"
+  WriteINIStr "$INSTDIR\install.ini" "paths" "libraryRoot" "$arltLibraryTarget"
 !macroend
 
 ; 去掉结尾多余的反斜杠（C:\ 会收敛成 C:，拼接后仍是 C:\xxx）。
@@ -69,9 +70,14 @@ Function ArltTrimPath
   ${Loop}
 FunctionEnd
 
-; 检查 $arltPathValue 能否创建并在其中写文件；结果写入 $arltWritable（1 可写 / 0 不可写）。
+; 检查能否创建目标目录（不再写探针文件，避免第一次安装时的误报）。
 Function ArltCheckWritable
   StrCpy $arltWritable "0"
+
+  ${If} ${FileExists} "$arltPathValue\*.*"
+    StrCpy $arltWritable "1"
+    Return
+  ${EndIf}
 
   ClearErrors
   CreateDirectory "$arltPathValue"
@@ -79,15 +85,6 @@ Function ArltCheckWritable
     Return
   ${EndIf}
 
-  ClearErrors
-  FileOpen $9 "$arltPathValue\.arlt-write-probe" w
-  ${If} ${Errors}
-    Return
-  ${EndIf}
-
-  FileWrite $9 "probe"
-  FileClose $9
-  Delete "$arltPathValue\.arlt-write-probe"
   StrCpy $arltWritable "1"
 FunctionEnd
 
@@ -116,6 +113,8 @@ FunctionEnd
     Pop $0
     ${NSD_CreateDirRequest} 0 11u 78% 12u "$arltInstallTarget"
     Pop $arltInstallField
+    ; 禁止手写路径，只能通过“浏览”选择，避免手输导致的路径问题。
+    SendMessage $arltInstallField 0x00CF 1 0
     ${NSD_OnChange} $arltInstallField ArltInstallChanged
     ${NSD_CreateBrowseButton} 79% 11u 21% 12u "浏览…"
     Pop $0
@@ -126,6 +125,7 @@ FunctionEnd
     Pop $0
     ${NSD_CreateDirRequest} 0 50u 78% 12u "$arltLibraryTarget"
     Pop $arltLibraryField
+    SendMessage $arltLibraryField 0x00CF 1 0
     ${NSD_OnChange} $arltLibraryField ArltLibraryChanged
     ${NSD_CreateBrowseButton} 79% 50u 21% 12u "浏览…"
     Pop $0
@@ -151,9 +151,8 @@ FunctionEnd
     StrCpy $arltPathValue "$INSTDIR"
     Call ArltCheckWritable
     ${If} $arltWritable != "1"
-      MessageBox MB_ICONEXCLAMATION|MB_OKCANCEL "当前无法写入：$INSTDIR$\r$\n可能是权限不足或该位置受保护。若这是 Program Files 等系统目录，请返回上一步选择“为所有用户安装”让安装器提权；否则请换一个目录（例如 H:\Apps\Arlt-HiFi）。$\r$\n点击“确定”继续尝试，点击“取消”返回修改。" IDOK arltInstallWritableOk
+      MessageBox MB_ICONEXCLAMATION "无法创建安装目录：$INSTDIR$\r$\n可能是权限不足或该位置受保护。请返回上一步换一个目录（例如 H:\Apps\Arlt-HiFi）；若必须装到系统目录，请在安装模式页选择“为所有用户安装”让安装器提权。"
       Abort
-      arltInstallWritableOk:
     ${EndIf}
 
     ${NSD_GetText} $arltLibraryField $arltLibraryTarget
@@ -169,9 +168,8 @@ FunctionEnd
     StrCpy $arltPathValue "$arltLibraryTarget"
     Call ArltCheckWritable
     ${If} $arltWritable != "1"
-      MessageBox MB_ICONEXCLAMATION|MB_OKCANCEL "当前无法写入曲库目录：$arltLibraryTarget$\r$\n请换一个位置（例如 H:\Apps\Arlt-HiFi Library）。$\r$\n点击“确定”继续尝试，点击“取消”返回修改。" IDOK arltLibraryWritableOk
+      MessageBox MB_ICONEXCLAMATION "无法创建曲库目录：$arltLibraryTarget$\r$\n请换一个位置（例如 H:\Apps\Arlt-HiFi Library）。"
       Abort
-      arltLibraryWritableOk:
     ${EndIf}
   FunctionEnd
 

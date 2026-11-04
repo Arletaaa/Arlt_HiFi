@@ -6,6 +6,7 @@ import type {
   FolderImportResult,
   LibraryImportProgress,
   LibraryImportResult,
+  LibraryLocation,
   LibraryRescanResult,
   Track,
   TrackEdit,
@@ -25,6 +26,7 @@ const applyTrackEditsChannel = "library:apply-edits";
 const setTrackCoverChannel = "library:set-track-cover";
 const deleteTrackChannel = "library:delete-track";
 const openLibraryFolderChannel = "library:open-folder";
+const getLibraryLocationChannel = "library:get-location";
 const libraryChangedChannel = "library:changed";
 const libraryImportProgressChannel = "library:import-progress";
 const loadSettingsChannel = "settings:load";
@@ -67,6 +69,9 @@ const desktopApi: ArltHifiDesktopApi = {
   },
   openLibraryFolder: async (): Promise<void> => {
     await ipcRenderer.invoke(openLibraryFolderChannel);
+  },
+  getLibraryLocation: async (): Promise<LibraryLocation> => {
+    return ipcRenderer.invoke(getLibraryLocationChannel) as Promise<LibraryLocation>;
   },
   onLibraryChanged: (handler: (tracks: readonly Track[]) => void): (() => void) => {
     const listener = (_event: unknown, tracks: readonly Track[]): void => {

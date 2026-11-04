@@ -756,6 +756,13 @@
   color: rgba(243, 238, 230, 0.42);
 }
 
+.library-import__path {
+  font-size: 10px;
+  line-height: 1.5;
+  color: rgba(243, 238, 230, 0.42);
+  word-break: break-all;
+}
+
 .library-import__actions {
   display: flex;
   flex-wrap: wrap;
