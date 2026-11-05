@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { copyFile, mkdir, open, stat } from "node:fs/promises";
 import { dirname, extname, join, parse } from "node:path";
 import type { ImportSkippedFile, Track } from "@arlt-hifi/shared";
+import { isPathInside } from "./library-root.js";
 import type { LibraryEntry } from "./library-manifest.js";
 import { cacheCover, createTrackFromFilePath, isSupportedAudioFile, parseAudioFile, type ParsedAudio, toTrack } from "./music-scanner.js";
 
@@ -102,7 +103,10 @@ export const findDuplicateEntry = (
 
 export interface ImportAudioFilesOptions {
   readonly coversDirectory: string | null;
-  /** 已托管的曲目，用于去重与重名避让。 */
+  /**
+   * 清单条目，用于去重与重名避让。
+   * 只有落在 `libraryDirectory` 内的条目参与判断：其它曲库目录里的同一首歌不阻止再导入一份。
+   */
   readonly entries: readonly LibraryEntry[];
   readonly filePaths: readonly string[];
   readonly importedAt?: () => string;
@@ -124,7 +128,11 @@ export interface ImportAudioFilesOutcome {
 /** 复制入库：解析标签 → 三元组去重 → `<artist>/<album>/<title>.<ext>` → 缓存封面。 */
 export const importAudioFiles = async (options: ImportAudioFilesOptions): Promise<ImportAudioFilesOutcome> => {
   const timestamp = options.importedAt ?? (() => new Date().toISOString());
-  const entries = [...options.entries];
+  // 去重只针对当前曲库：切到新曲库后，旧曲库里的同一首歌应该能再导入一份。
+  const scopedEntries = options.entries.filter((entry) =>
+    isPathInside(options.libraryDirectory, entry.track.filePath)
+  );
+  const entries = [...scopedEntries];
   const imported: Track[] = [];
   const skipped: ImportSkippedFile[] = [];
   const usedPaths = new Set(entries.map((entry) => entry.track.filePath));
@@ -177,7 +185,7 @@ export const importAudioFiles = async (options: ImportAudioFilesOptions): Promis
   }
 
   return {
-    entries: entries.slice(options.entries.length),
+    entries: entries.slice(scopedEntries.length),
     imported,
     remainingFilePaths: options.filePaths.slice(processed),
     skipped

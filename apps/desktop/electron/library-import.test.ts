@@ -298,6 +298,72 @@ describe("importing audio files", () => {
     expect(second.skipped).toEqual([{ filePath: copyFile, reason: "duplicate" }]);
   });
 
+  it("does not treat entries from another library root as duplicates", async () => {
+    const root = await createTempDirectory();
+    const source = join(root, "source");
+    const firstLibrary = join(root, "library-a");
+    const secondLibrary = join(root, "library-b");
+    const sourceFile = join(source, "Nocturne.wav");
+
+    await mkdir(source, { recursive: true });
+    await writeSilentWav(sourceFile, 1);
+
+    const first = await importAudioFiles({
+      coversDirectory: null,
+      entries: [],
+      filePaths: [sourceFile],
+      libraryDirectory: firstLibrary
+    });
+    const second = await importAudioFiles({
+      coversDirectory: null,
+      entries: first.entries,
+      filePaths: [sourceFile],
+      libraryDirectory: secondLibrary
+    });
+
+    expect(first.imported).toHaveLength(1);
+    expect(second.skipped).toEqual([]);
+    expect(second.imported.map((track) => track.filePath)).toEqual([
+      join(secondLibrary, "Unknown Artist", "Unknown Album", "Nocturne.wav")
+    ]);
+  });
+
+  it("can copy a file that already lives inside another library root", async () => {
+    const root = await createTempDirectory();
+    const source = join(root, "source");
+    const firstLibrary = join(root, "library-a");
+    const secondLibrary = join(root, "library-b");
+    const sourceFile = join(source, "Nocturne.wav");
+
+    await mkdir(source, { recursive: true });
+    await writeSilentWav(sourceFile, 1);
+
+    const first = await importAudioFiles({
+      coversDirectory: null,
+      entries: [],
+      filePaths: [sourceFile],
+      libraryDirectory: firstLibrary
+    });
+    const sourceInFirstLibrary = first.imported[0]?.filePath;
+
+    if (!sourceInFirstLibrary) {
+      throw new Error("expected the first import to copy the file");
+    }
+
+    const second = await importAudioFiles({
+      coversDirectory: null,
+      entries: first.entries,
+      filePaths: [sourceInFirstLibrary],
+      libraryDirectory: secondLibrary
+    });
+
+    expect(second.skipped).toEqual([]);
+    expect(second.imported).toHaveLength(1);
+    expect(second.imported[0]?.filePath).toBe(
+      join(secondLibrary, "Unknown Artist", "Unknown Album", "Nocturne.wav")
+    );
+  });
+
   it("keeps same-named tracks by suffixing instead of overwriting", async () => {
     const root = await createTempDirectory();
     const firstSource = join(root, "a");
