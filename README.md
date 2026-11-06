@@ -33,7 +33,7 @@ Arlt-HiFi 是一款面向本地 HiFi 音乐播放体验的 Electron 桌面音乐
 
 ## 发布与下载
 
-- 可发布产物是 Windows 安装包：`arlt-hifi-<version>-setup.exe`（NSIS，非一键安装，可自选安装目录）。当前未签名，SmartScreen 会提示"未知发布者"。
+- 可发布产物是 Windows 安装包：`arlt-hifi-<version>-setup.exe`（NSIS，非一键安装，可自选安装目录）。支持 Windows 10（64 位）及以上，Windows 7 / 8 / 8.1 不受支持。当前未签名，SmartScreen 会提示"未知发布者"。
 - 安装包**不入库**：`apps/desktop/release/` 已在 `.gitignore` 中，产物只挂到 GitHub Releases。仓库保留源码、构建配置与署名，减少仓库体积与历史负担。
 - 本地出包与校验：
 
@@ -41,12 +41,12 @@ Arlt-HiFi 是一款面向本地 HiFi 音乐播放体验的 Electron 桌面音乐
 pnpm install
 pnpm build
 pnpm --filter @arlt-hifi/desktop dist   # 产物：apps/desktop/release/arlt-hifi-<version>-setup.exe
-Get-FileHash apps/desktop/release/arlt-hifi-1.0.2-setup.exe -Algorithm SHA256
+Get-FileHash apps/desktop/release/arlt-hifi-1.0.3-setup.exe -Algorithm SHA256
 ```
 
 - 曲库位置可以在应用内更改：设置 → 音乐库 →「更改曲库位置」。优先级为 `settings.json.libraryRoot` > 安装器 `install.ini`（userData → 安装目录）> 默认 `%APPDATA%\Arlt-HiFi\library`（默认位置只在从未配置过曲库时使用）；安装向导里的曲库选择只作为首次默认值。切换**只改根目录、不迁移文件**，旧目录里的曲目不再显示（清单记录保留，切回即可恢复），并且只能切到没有音频文件的文件夹或之前用过的曲库目录——普通音乐文件夹没有托管记录，会被拒绝。从曲库目录内部导入会被拒绝，失效条目只清理当前曲库；删除曲目走回收站。
 - 安装位置与数据位置是两回事：安装向导里可以分别选择「软件安装位置」和「曲库位置」，两者都会在你选择的路径下**新建文件夹**（`Arlt-HiFi` 与 `Arlt-HiFi Library`），并实时显示最终路径。曲库导入后会把音频复制进曲库目录，卸载不会删除它；设置、`library.json` 与封面仍在 `%APPDATA%\Arlt-HiFi`。
-- 版本记录见 [CHANGELOG.md](CHANGELOG.md)，当前版本的发布说明见 [docs/releases/v1.0.2.md](docs/releases/v1.0.2.md)。
+- 版本记录见 [CHANGELOG.md](CHANGELOG.md)，当前版本的发布说明见 [docs/releases/v1.0.3.md](docs/releases/v1.0.3.md)。
 - 许可证：[MIT](LICENSE)（第三方模型/贴图按各自许可，见 [CREDITS](apps/desktop/public/textures/CREDITS.md)）。
 - 交互参考：[The Complete Shelf](https://github.com/MengTo/complete-shelf)（MengTo），仅借鉴连续货架与抽取详情的交互思路，未使用其代码或素材。
 
@@ -75,7 +75,7 @@ pnpm --filter @arlt-hifi/desktop build:web   # 产物：apps/desktop/dist
 
 ## 当前进度
 
-v1.0.2 已发布：单排 CD 货架 + CD 盒 + 唱片机 + CD 详情信息条、搜索/进度/键盘、曲库导入与管理、标签补齐、导入取消/续传、媒体 seek 均已完成；曲库位置改为应用内设置，删除曲目进回收站。`typecheck` / `test`（desktop 192 + shared 11）/ `build` / `build:web` 全绿。收藏、长廊/Bay、列表降级不在 v1.0；后续拆文件、性能收口与标签写回不列入本次交付。[收尾清单](docs/product/next-steps.md)、[roadmap](docs/product/roadmap.md)。
+v1.0.3 已发布：单排 CD 货架 + CD 盒 + 唱片机 + CD 详情信息条、搜索/进度/键盘、曲库导入与管理、标签补齐、导入取消/续传、媒体 seek 均已完成；曲库位置改为应用内设置，切换目录只接受无音频目录或已登记曲库，重扫与跨库导入按当前曲库隔离，删除曲目进回收站。`typecheck` / `test`（desktop 199 + shared 11）/ `build` / `build:web` 全绿。收藏、长廊/Bay、列表降级不在 v1.0；后续拆文件、性能收口与标签写回不列入本次交付。[收尾清单](docs/product/next-steps.md)、[roadmap](docs/product/roadmap.md)。
 
 ## 质量检查
 
